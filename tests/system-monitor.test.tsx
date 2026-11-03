@@ -85,6 +85,8 @@ test('the band is one row of short CPU, RAM and GPU bars', async ($, on) => {
     if (glow) expect(String(glow.props.source)).toMatch(/#f59e0b.*<animate attributeName="x"/)
     // Sized to the whole band: unsized, the desktop's frame stops ~300 px in.
     if (glow) expect(glow.props.width).toBeGreaterThanOrEqual(80 * 8)
+    // No fill across the whole frame: its square edges show inside the band.
+    if (glow) expect(String(glow.props.source)).not.toContain('<rect width="1200"')
     await ui.unmount()
   }
 })

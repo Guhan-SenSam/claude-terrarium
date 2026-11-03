@@ -14,6 +14,8 @@ const BAR = 8
 // and the clipping box around each background cuts what is left over.
 const CELL_PX = 8.5
 const LINE_PX = 20
+// The band's row is a little taller than a line; its beam is centred on it.
+const ROW_PX = 24
 
 // Change the tag when Usage's fields change: it declines what an earlier
 // version stored, which outlives a reload.
@@ -166,7 +168,7 @@ export const register: Register = on => {
             source={glow(load(data))}
             alt="Glow tinted and paced by system load"
             width={Math.ceil(e.props.bodyColumns * CELL_PX)}
-            height={LINE_PX * 2}
+            height={ROW_PX}
             isInteractive
           />
         </Box>
@@ -273,19 +275,18 @@ function backdrop(level: Load) {
 
 /**
  * A scanner beam: a bright core in a soft halo gliding across the row and
- * back, easing at each end. Only horizontal, so however much of its height
- * the row clips away, it looks the same.
+ * back, easing at each end. Both fade out on every side and nothing else is
+ * drawn, so the frame's square edges never show inside the rounded band.
  */
 function glow(level: Load) {
   const { colors, seconds } = BACKDROP[level]
   // calm 8 s there and back, busy 4 s, hot 2 s.
   const dur = `${(seconds / 3.5).toFixed(1)}s`
   const fade = (id: string, color: string) =>
-    `<linearGradient id="${id}" x1="0" x2="1" y1="0" y2="0">` +
-    `<stop offset="0" stop-color="${color}" stop-opacity="0"/>` +
-    `<stop offset="0.5" stop-color="${color}" stop-opacity="1"/>` +
+    `<radialGradient id="${id}" cx="0.5" cy="0.5" r="0.5">` +
+    `<stop offset="0" stop-color="${color}" stop-opacity="1"/>` +
     `<stop offset="1" stop-color="${color}" stop-opacity="0"/>` +
-    '</linearGradient>'
+    '</radialGradient>'
   // Both rects keep their centre on the same point, from 0 to 1200 and back.
   const beam = (fill: string, width: number, opacity: number) =>
     `<rect width="${width}" height="100" fill="url(#${fill})" opacity="${opacity}">` +
@@ -295,9 +296,8 @@ function glow(level: Load) {
   return (
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 100" width="1200" height="100" preserveAspectRatio="none">' +
     `<defs>${fade('halo', colors[1])}${fade('core', colors[0])}</defs>` +
-    `<rect width="1200" height="100" fill="${colors[2]}" opacity="0.1"/>` +
-    beam('halo', 280, 0.4) +
-    beam('core', 50, 0.9) +
+    beam('halo', 320, 0.3) +
+    beam('core', 70, 0.6) +
     '</svg>'
   )
 }
