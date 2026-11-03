@@ -1,0 +1,9 @@
+{
+  "name": "turn-receipt",
+  "version": "0.1.0",
+  "description": "A one-line receipt under each finished reply: time taken, tool calls, agents, files edited and tokens",
+  "author": { "name": "Guhan Sensam" },
+  "license": "MIT",
+  "repository": "https://github.com/Guhan-SenSam/claude-mods",
+  "types": "./types/index.d.ts"
+}
