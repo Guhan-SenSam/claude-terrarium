@@ -74,19 +74,13 @@ test('the band is one row of short CPU, RAM and GPU bars', async ($, on) => {
 
   for (const surface of ['terminal', 'desktop'] as const) {
     const ui = await $.ui.mount({ ...BAND, surface })
-    // The whole row; its labels are Texts of their own inside it.
-    const row = await ui.find({ type: 'Text', text: /^CPU .*RAM/ })
+    // One Text per bar; its label is a Text of its own inside it.
+    const bar = async (label: string) => (await ui.find({ type: 'Text', text: new RegExp(`^${label} .*%$`) }))?.text
 
-    expect(row?.text).toBe('CPU ████░░░░  53%   RAM ██████░░  75%   GPU ███░░░░░  37%')
+    expect(await bar('CPU')).toBe('CPU ████░░░░  53%')
+    expect(await bar('RAM')).toBe('RAM ██████░░  75%')
+    expect(await bar('GPU')).toBe('GPU ███░░░░░  37%')
     expect(await ui.find({ type: 'Text', text: /chrome|TOP|\/mnt/ })).toBeUndefined()
-    // A scanner beam in the load's colours glides behind the row wherever there is Svg.
-    const glow = await ui.find({ type: 'Svg' })
-    expect(glow === undefined).toBe(surface === 'terminal')
-    if (glow) expect(String(glow.props.source)).toMatch(/#f59e0b.*<animate attributeName="x"/)
-    // Sized to the whole band: unsized, the desktop's frame stops ~300 px in.
-    if (glow) expect(glow.props.width).toBeGreaterThanOrEqual(80 * 8)
-    // No fill across the whole frame: its square edges show inside the band.
-    if (glow) expect(String(glow.props.source)).not.toContain('<rect width="1200"')
     await ui.unmount()
   }
 })
@@ -95,8 +89,34 @@ test('a narrow band drops the bars and keeps the numbers', async ($, on) => {
   await started($, on)
 
   const ui = await $.ui.mount({ ...BAND, surface: 'desktop', props: { ...BAND.props, bodyColumns: 36 } })
-  expect((await ui.find({ type: 'Text', text: /^CPU/ }))?.text).toBe('CPU   53%   RAM   75%   GPU   37%')
+  expect((await ui.find({ type: 'Text', text: /^CPU .*%$/ }))?.text).toBe('CPU   53%')
+  expect((await ui.find({ type: 'Text', text: /^GPU .*%$/ }))?.text).toBe('GPU   37%')
   await ui.unmount()
+})
+
+test('each bar glows behind itself, brighter the higher it reads', async ($, on) => {
+  await started($, on)
+
+  const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  const glows = (await ui.findAll({ type: 'Svg' })).map(svg => String(svg.props.source))
+  const opacity = (source: string) => Number(/opacity="([\d.]+)"\/><\/svg>/.exec(source)?.[1])
+
+  // CPU 53%, RAM 75%, GPU 37%: each in its own tone, the brightest the highest.
+  expect(glows.length).toBe(3)
+  expect(glows[0]).toContain('#22c55e')
+  expect(glows[1]).toContain('#f59e0b')
+  expect(glows[2]).toContain('#22c55e')
+  expect(opacity(glows[1]!)).toBeGreaterThan(opacity(glows[0]!))
+  expect(opacity(glows[0]!)).toBeGreaterThan(opacity(glows[2]!))
+  // Fixed, not animated: an animation would restart every 2 s with the numbers.
+  for (const source of glows) expect(source).not.toContain('<animate')
+  // Sized past the ~300 px an unsized frame gets, to its own bar.
+  for (const svg of await ui.findAll({ type: 'Svg' })) expect(svg.props.width).toBeGreaterThanOrEqual(17 * 8)
+  await ui.unmount()
+
+  const terminal = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  expect(await terminal.find({ type: 'Svg' })).toBeUndefined()
+  await terminal.unmount()
 })
 
 test('the pane shows each bar with a detail line, on every surface', async ($, on) => {
@@ -131,7 +151,9 @@ test('a suspended GPU is left asleep, not woken by nvidia-smi', async ($, on) =>
   const ran = await started($, on, 'suspended')
 
   const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
-  expect((await ui.find({ type: 'Text', text: /^CPU/ }))?.text).toMatch(/GPU asleep$/)
+  expect((await ui.find({ type: 'Text', text: /^GPU/ }))?.text).toBe('GPU asleep')
+  // A sleeping GPU has no reading, so no glow: CPU and RAM only.
+  expect((await ui.findAll({ type: 'Svg' })).length).toBe(2)
   expect(ran).not.toContain('nvidia-smi')
   await ui.unmount()
 })

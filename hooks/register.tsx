@@ -14,7 +14,7 @@ const BAR = 8
 // and the clipping box around each background cuts what is left over.
 const CELL_PX = 8.5
 const LINE_PX = 20
-// The band's row is a little taller than a line; its beam is centred on it.
+// The band's row is a little taller than a line; its glows are centred on it.
 const ROW_PX = 24
 
 // Change the tag when Usage's fields change: it declines what an earlier
@@ -146,33 +146,37 @@ export const register: Register = on => {
     const data = await read($, usage)
     if (e.props.hasSurvey || !data) return next(e)
 
-    const { Text } = $.ui.resolve(e)
+    const { Box, Text } = $.ui.resolve(e)
     const list = meters(data)
     const label = labelWidth(list)
     const room = Math.floor((e.props.bodyColumns - 3 * (list.length - 1)) / list.length) - label - 5
     const cells = room >= 4 ? Math.min(BAR, room) : 0
-
-    const row = (
+    const segment = (meter: Meter) => (
       <Text mono wrap="truncate-end">
-        {list.map((meter, i) => [i > 0 ? '   ' : '', meterRow(Text, meter, label, cells)])}
+        {meterRow(Text, meter, label, cells)}
       </Text>
     )
-    // The terminal has no Svg; on the desktop a glow sweeps behind the row.
-    if (e.surface === 'terminal') return row
-    const { Box, Svg } = $.ui.resolve(e)
+    // The terminal has no Svg; elsewhere each bar glows by its own reading.
+    if (e.surface === 'terminal') return <Box columnGap={3}>{list.map(segment)}</Box>
+    const { Svg } = $.ui.resolve(e)
 
     return (
-      <Box width="100%">
-        <Box position="absolute" top={0} left={0} right={0} bottom={0} overflow="hidden">
-          <Svg
-            source={glow(load(data))}
-            alt="Glow tinted and paced by system load"
-            width={Math.ceil(e.props.bodyColumns * CELL_PX)}
-            height={ROW_PX}
-            isInteractive
-          />
-        </Box>
-        <Box position="relative">{row}</Box>
+      <Box columnGap={3}>
+        {list.map(meter => (
+          <Box>
+            {meter.percent !== undefined && (
+              <Box position="absolute" top={0} left={0} right={0} bottom={0} overflow="hidden">
+                <Svg
+                  source={halo(meter.percent)}
+                  alt={`${meter.label} glow, brighter as it rises`}
+                  width={Math.ceil((label + cells + 5) * CELL_PX)}
+                  height={ROW_PX}
+                />
+              </Box>
+            )}
+            <Box position="relative">{segment(meter)}</Box>
+          </Box>
+        ))}
       </Box>
     )
   })
@@ -273,31 +277,22 @@ function backdrop(level: Load) {
   )
 }
 
+const TONE_HEX = { success: '#22c55e', warning: '#f59e0b', error: '#ef4444' } as const
+
 /**
- * A scanner beam: a bright core in a soft halo gliding across the row and
- * back, easing at each end. Both fade out on every side and nothing else is
- * drawn, so the frame's square edges never show inside the rounded band.
+ * A soft ellipse behind one bar, in its tone's colour, brighter the higher
+ * the reading. It fades out on every side, so no frame edge shows.
  */
-function glow(level: Load) {
-  const { colors, seconds } = BACKDROP[level]
-  // calm 8 s there and back, busy 4 s, hot 2 s.
-  const dur = `${(seconds / 3.5).toFixed(1)}s`
-  const fade = (id: string, color: string) =>
-    `<radialGradient id="${id}" cx="0.5" cy="0.5" r="0.5">` +
-    `<stop offset="0" stop-color="${color}" stop-opacity="1"/>` +
-    `<stop offset="1" stop-color="${color}" stop-opacity="0"/>` +
-    '</radialGradient>'
-  // Both rects keep their centre on the same point, from 0 to 1200 and back.
-  const beam = (fill: string, width: number, opacity: number) =>
-    `<rect width="${width}" height="100" fill="url(#${fill})" opacity="${opacity}">` +
-    `<animate attributeName="x" values="${-width / 2};${1200 - width / 2};${-width / 2}" keyTimes="0;0.5;1" calcMode="spline" keySplines="0.45 0 0.55 1;0.45 0 0.55 1" dur="${dur}" repeatCount="indefinite"/>` +
-    '</rect>'
+function halo(percent: number) {
+  const color = TONE_HEX[tone(percent)]
+  // 5% steps, so a reading that wobbles a little redraws nothing.
+  const opacity = (Math.round((0.06 + 0.5 * (clamp(percent) / 100)) * 20) / 20).toFixed(2)
 
   return (
-    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 100" width="1200" height="100" preserveAspectRatio="none">' +
-    `<defs>${fade('halo', colors[1])}${fade('core', colors[0])}</defs>` +
-    beam('halo', 320, 0.3) +
-    beam('core', 70, 0.6) +
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100" preserveAspectRatio="none">' +
+    `<defs><radialGradient id="g" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="${color}" stop-opacity="1"/>` +
+    `<stop offset="0.55" stop-color="${color}" stop-opacity="0.55"/><stop offset="1" stop-color="${color}" stop-opacity="0"/></radialGradient></defs>` +
+    `<rect width="100" height="100" fill="url(#g)" opacity="${opacity}"/>` +
     '</svg>'
   )
 }
