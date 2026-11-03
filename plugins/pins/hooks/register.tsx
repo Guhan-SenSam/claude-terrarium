@@ -14,7 +14,7 @@ const STORE_PREFIX = 'pins:'
 // version stored, which outlives a reload.
 const pins = atom({ plugin: 'pins', key: 'pins' } as const, [], { shape: 'pins-1' })
 
-// Module variables start over on a reload; the next prompt names the session again.
+// Module variables start over on a reload; session.start runs again then.
 let storeKey: string | undefined
 
 /** What a reply is matched by: the last words of its text, whitespace folded. */
@@ -75,18 +75,8 @@ export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     await $.command.register({ name: 'pin', description: "Pin Claude's last reply" })
     await $.command.register({ name: 'pins', description: 'Show or hide the Pinned pane' })
-
-    return next(e)
-  })
-
-  on('classic.SessionStart', async ($, e, next) => {
-    await attach($, e.session_id)
-
-    return next(e)
-  })
-
-  on('classic.UserPromptSubmit', async ($, e, next) => {
-    await attach($, e.session_id)
+    // Runs at the start and again after every reload.
+    await attach($, await $.session.id())
 
     return next(e)
   })

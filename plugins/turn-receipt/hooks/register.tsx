@@ -24,7 +24,6 @@ const receipts = atom({ plugin: 'turn-receipt', key: 'receipts' } as const, [], 
 
 // Module variables start over on a reload; a turn running then gets no receipt.
 let turn: { tools: number; agents: number; files: string[] } | undefined
-let lastText: { uuid: string; key: string } | undefined
 let storeKey: string | undefined
 
 /** What a reply is matched by: the last words of its text, whitespace folded. */
@@ -59,15 +58,9 @@ async function prune($: EngineInterface) {
 }
 
 export const register: Register = on => {
-  on('classic.SessionStart', async ($, e, next) => {
-    await attach($, e.session_id)
-
-    return next(e)
-  })
-
-  // After a reload the session start has passed; the next prompt names it.
-  on('classic.UserPromptSubmit', async ($, e, next) => {
-    await attach($, e.session_id)
+  // Runs at the start and again after every reload.
+  on('session.start', async ($, e, next) => {
+    await attach($, await $.session.id())
 
     return next(e)
   })
@@ -91,27 +84,14 @@ export const register: Register = on => {
     return next(e)
   })
 
-  // The main loop's text rows, so a receipt can name the row it sits under.
-  on('session.append', async ($, e, next) => {
-    const stored = await next(e)
-    if (e.door === 'response' && e.agentId === undefined) {
-      const text = textOf(e.message.content)
-      if (text && 'uuid' in stored && stored.uuid) lastText = { uuid: stored.uuid, key: textKey(text) }
-    }
-
-    return stored
-  })
-
   on('turn.complete', async ($, e, next) => {
     const result = await next(e)
     if (e.agentId !== undefined || !turn) return result
     const done = turn
     turn = undefined
-    const key = e.answer ? textKey(e.answer) : lastText?.key
-    if (!key) return result
+    if (!e.answer) return result
     const receipt: Receipt = {
-      key,
-      uuid: lastText?.key === key ? lastText.uuid : undefined,
+      key: textKey(e.answer),
       durationMs: e.durationMs,
       tools: done.tools,
       agents: done.agents,
@@ -131,7 +111,7 @@ export const register: Register = on => {
     if (e.props.isSummary) return drawn
     const list = await read($, receipts)
     const key = textKey(e.props.text)
-    const receipt = list.findLast(r => r.uuid === e.requestId) ?? list.findLast(r => r.key === key)
+    const receipt = list.findLast(r => r.key === key)
     if (!receipt) return drawn
     const { Box, Text } = $.ui.resolve(e)
 
@@ -182,14 +162,4 @@ function plural(n: number, noun: string) {
 
 function tokens(n: number) {
   return n < 1000 ? String(n) : `${(n / 1000).toFixed(1)}k`
-}
-
-/** The text blocks of a stored row, joined. */
-function textOf(content: unknown): string {
-  if (typeof content === 'string') return content
-  if (!Array.isArray(content)) return ''
-
-  return content
-    .map(block => (block && typeof block === 'object' && 'text' in block ? String(block.text) : ''))
-    .join('')
 }

@@ -2,8 +2,6 @@
 export type Receipt = {
   /** The reply it belongs to: the last words of its final text, whitespace folded. */
   key: string
-  /** The transcript row of that text, when the session told us. */
-  uuid?: string
   durationMs: number
   /** Tool calls in the turn, its subagents' included. */
   tools: number

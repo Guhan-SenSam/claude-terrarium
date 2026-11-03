@@ -21,7 +21,8 @@ const usage = (output: number) => ({
 /** Stands for the engine beneath the mod: tools run, turns start and end, rows draw. */
 function engine(on: On) {
   on('ui.render', ($, e) => $.ui.resolve(e).Text({ children: 'the reply as the engine draws it' }))
-  on('classic.SessionStart', () => ({}))
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('session.id', () => ({ value: 's1' }))
   on('tool.call', () => ({ result: {} }))
   on('turn.start', (_, e) => ({ turnId: e.turnId }))
   on('turn.complete', (_, e) => ({ text: e.answer }))
@@ -97,7 +98,26 @@ test('receipts come back when the session restarts', async ($, on) => {
   mock.clock(on, { now: 10 })
   engine(on)
 
-  await $.classic.SessionStart({ source: 'resume', session_id: 's1' })
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
 
   expect(await receiptOn($, 'desktop', 'Kept from before.')).toBe('9s · 2 tool calls')
+})
+
+test("a receipt is saved under the session's id", async ($, on) => {
+  const saved: { key: string; value: unknown }[] = []
+  mock.clock(on, { now: 10 })
+  on('store.get', () => ({ value: undefined }))
+  on('store.keys', () => ({ value: [] }))
+  on('store.set', (_, e) => {
+    saved.push(e)
+
+    return { value: undefined }
+  })
+  engine(on)
+
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  await $.turn.start({ text: 'go', turnId: 't1' })
+  await $.turn.complete({ answer: 'Saved one.', durationMs: 2000, isAborted: false, turnId: 't1', reason: 'answer' })
+
+  expect(saved.at(-1)).toMatchObject({ key: 'receipts:s1', value: { at: 10, receipts: [{ key: 'Saved one.' }] } })
 })

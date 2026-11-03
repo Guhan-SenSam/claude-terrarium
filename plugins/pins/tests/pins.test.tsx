@@ -35,7 +35,7 @@ function engine(on: On) {
   })
   on('command.register', (_, e) => ({ value: { command: e.name } }))
   on('session.start', (_, e) => ({ cwd: e.cwd }))
-  on('classic.SessionStart', () => ({}))
+  on('session.id', () => ({ value: 's1' }))
   on('session.messages', () => ({
     value: [
       { role: 'user', text: 'what next?', toolUses: [] },
@@ -103,11 +103,37 @@ test('pins come back when the session restarts', async ($, on) => {
   mock.store(on, { 'pins:s1': { at: 1, pins: [kept] } })
   mock.clock(on, { now: 10 })
   on('ui.render', ($, e) => $.ui.resolve(e).Text({ children: 'engine' }))
-  on('classic.SessionStart', () => ({}))
+  on('command.register', (_, e) => ({ value: { command: e.name } }))
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('session.id', () => ({ value: 's1' }))
 
-  await $.classic.SessionStart({ source: 'resume', session_id: 's1' })
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
 
   const pane = await $.ui.mount({ ...PANE, surface: 'desktop' })
   expect((await pane.find({ type: 'Markdown' }))?.props.text).toBe('Kept from before.')
   await pane.unmount()
+})
+
+test("a pin is saved under the session's id", async ($, on) => {
+  const saved: { key: string; value: unknown }[] = []
+  mock.clock(on, { now: 10 })
+  on('store.get', () => ({ value: undefined }))
+  on('store.keys', () => ({ value: [] }))
+  on('store.set', (_, e) => {
+    saved.push(e)
+
+    return { value: undefined }
+  })
+  on('ui.render', ($, e) => $.ui.resolve(e).Text({ children: 'engine' }))
+  on('ui.open', () => ({ value: { isPlaced: true } }))
+  on('command.register', (_, e) => ({ value: { command: e.name } }))
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('session.id', () => ({ value: 's1' }))
+
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  const row = await $.ui.mount({ ...message(REPLY), surface: 'desktop' })
+  await row.press({ key: 'pin' })
+  await row.unmount()
+
+  expect(saved.at(-1)).toMatchObject({ key: 'pins:s1', value: { at: 10, pins: [{ id: 'row-1', text: REPLY }] } })
 })
