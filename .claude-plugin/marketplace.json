@@ -1,0 +1,13 @@
+{
+  "name": "claude-system-monitor",
+  "owner": {
+    "name": "Guhan Sensam"
+  },
+  "description": "System monitor mod for Claude Code: CPU, RAM, GPU, disk and top apps beside the chat",
+  "plugins": [
+    {
+      "name": "system-monitor",
+      "source": "./"
+    }
+  ]
+}
