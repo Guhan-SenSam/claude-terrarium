@@ -1,13 +1,8 @@
 {
-  "name": "claude-system-monitor",
-  "owner": {
-    "name": "Guhan Sensam"
-  },
-  "description": "System monitor mod for Claude Code: live CPU, RAM and GPU bars beside the chat",
+  "name": "claude-mods",
+  "owner": { "name": "Guhan Sensam" },
+  "description": "The Claude Code mods Guhan uses: a system monitor, turn receipts and pinned replies",
   "plugins": [
-    {
-      "name": "system-monitor",
-      "source": "./"
-    }
+    { "name": "system-monitor", "source": "./plugins/system-monitor" }
   ]
 }

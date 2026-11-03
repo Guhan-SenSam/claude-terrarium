@@ -1,33 +1,19 @@
-# System Monitor for Claude Code
+# claude-mods
 
-A Claude Code mod that keeps an eye on the machine while you work: short live bars for CPU, RAM
-and GPU. It's built for running heavy jobs (big builds, local models, emulators) and checking on
-them from the desktop app or your phone while Claude works.
+The Claude Code mods I use on my own setup. Each one lives in `plugins/<name>/` with its own
+README and tests, and this repository is a marketplace that lists them all, so any one of them
+installs on its own.
 
-## What it shows
-
-**One row above the prompt**, always up in the desktop app and the terminal:
-
-```
-CPU ████░░░░  42%   RAM █████░░░  63%   GPU █░░░░░░░  12%
-```
-
-On a narrow prompt the bars drop out and the percentages stay. In the desktop app each bar has a soft
-glow behind it in its own colour, brighter the higher that reading climbs.
-
-**A detail pane**, opened with `/sysmon`: the same three bars at full width, each with a detail
-line (threads and load average, used memory and swap, VRAM and GPU temperature). In the desktop and
-phone apps it has a soft animated background that turns from teal to amber to red and speeds up as
-the machine gets busier.
-
-Bars turn amber at 70% and red at 90%, and refresh every 2 seconds.
+| Mod | What it does |
+|---|---|
+| [system-monitor](plugins/system-monitor) | Short live CPU, RAM and GPU bars above the prompt, each glowing brighter as it rises; `/sysmon` opens a detail pane |
 
 ## Install
 
-At the prompt of a terminal session:
+At the prompt of a terminal session, for any mod in the table:
 
 ```
-/plugin install system-monitor --marketplace Guhan-SenSam/claude-system-monitor
+/plugin install <mod> --marketplace Guhan-SenSam/claude-mods
 ```
 
 Answer `y` to add the marketplace, then pick a scope (user scope loads it in every session).
@@ -35,40 +21,21 @@ Answer `y` to add the marketplace, then pick a scope (user scope loads it in eve
 From a shell:
 
 ```bash
-claude plugin install system-monitor --marketplace Guhan-SenSam/claude-system-monitor
+claude plugin install <mod> --marketplace Guhan-SenSam/claude-mods
 ```
 
 In the desktop app, where `/plugin` does not run: click **+** next to the prompt box, then
-**Plugins**, **Add marketplace** with `Guhan-SenSam/claude-system-monitor`, then **Add plugin**.
-
-## Use
-
-- The band appears on its own once a session starts. Its `[-]` collapses it, and it steps aside
-  when Claude shows a survey there.
-- `/sysmon` opens the detail pane, and closes it when it's open.
-- The phone app doesn't draw the band yet, so open the pane with `/sysmon` to watch from your phone.
-- Claude Code decides where the pane goes (beside the conversation, or above the prompt in a
-  narrow terminal); a mod can't pin it to one side.
-
-## Requirements
-
-- Linux: it reads `/proc`.
-- An NVIDIA GPU is optional and read through `nvidia-smi`. A GPU that has runtime-suspended (hybrid
-  graphics laptops) is left asleep rather than woken every two seconds.
-
-Everything stays on your machine. The mod runs `sh`, `cat` and `nvidia-smi` locally and sends
-nothing anywhere.
+**Plugins**, **Add marketplace** with `Guhan-SenSam/claude-mods`, then **Add plugin** and pick the
+mod.
 
 ## Develop
 
-```bash
-claude plugin validate .
-claude plugin test .
-```
+Each mod is checked on its own:
 
-`hooks/sample.ts` holds the parsers, `hooks/register.tsx` the band, the pane and the sampling
-timer, and `tests/` runs both against fixed sample output on the terminal, desktop and mobile
-surfaces.
+```bash
+claude plugin validate plugins/<mod>
+claude plugin test plugins/<mod>
+```
 
 ## License
 

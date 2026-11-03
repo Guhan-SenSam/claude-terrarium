@@ -4,6 +4,6 @@
   "description": "Short live CPU, RAM and GPU bars above the prompt, with a detail pane on /sysmon",
   "author": { "name": "Guhan Sensam" },
   "license": "MIT",
-  "repository": "https://github.com/Guhan-SenSam/claude-system-monitor",
+  "repository": "https://github.com/Guhan-SenSam/claude-mods",
   "types": "./types/index.d.ts"
 }
