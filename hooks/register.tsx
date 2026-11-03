@@ -9,6 +9,11 @@ const TITLE = 'System'
 const EVERY_MS = 2000
 // The band's bars stay short; they shrink, then go, when the prompt is narrow.
 const BAR = 8
+// An Svg left unsized draws in a ~300 px frame, so the backgrounds are sized
+// from cells. The desktop's code font is ~7.8 px by ~19 px; these overshoot,
+// and the clipping box around each background cuts what is left over.
+const CELL_PX = 8.5
+const LINE_PX = 20
 
 // Change the tag when Usage's fields change: it declines what an earlier
 // version stored, which outlives a reload.
@@ -155,9 +160,15 @@ export const register: Register = on => {
     const { Box, Svg } = $.ui.resolve(e)
 
     return (
-      <Box>
+      <Box width="100%">
         <Box position="absolute" top={0} left={0} right={0} bottom={0} overflow="hidden">
-          <Svg source={glow(load(data))} alt="Glow tinted and paced by system load" isInteractive />
+          <Svg
+            source={glow(load(data))}
+            alt="Glow tinted and paced by system load"
+            width={Math.ceil(e.props.bodyColumns * CELL_PX)}
+            height={LINE_PX * 2}
+            isInteractive
+          />
         </Box>
         <Box position="relative">{row}</Box>
       </Box>
@@ -191,7 +202,13 @@ export const register: Register = on => {
     return (
       <Box minHeight={e.props.scroll.bodyRows}>
         <Box position="absolute" top={0} left={0} right={0} bottom={0} overflow="hidden">
-          <Svg source={backdrop(load(data))} alt="Background tinted and paced by system load" isInteractive />
+          <Svg
+            source={backdrop(load(data))}
+            alt="Background tinted and paced by system load"
+            width={Math.ceil(width * CELL_PX)}
+            height={e.props.scroll.bodyRows * LINE_PX}
+            isInteractive
+          />
         </Box>
         {body}
       </Box>

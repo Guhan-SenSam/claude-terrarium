@@ -83,6 +83,8 @@ test('the band is one row of short CPU, RAM and GPU bars', async ($, on) => {
     const glow = await ui.find({ type: 'Svg' })
     expect(glow === undefined).toBe(surface === 'terminal')
     if (glow) expect(String(glow.props.source)).toMatch(/#f59e0b.*<animate attributeName="x"/)
+    // Sized to the whole band: unsized, the desktop's frame stops ~300 px in.
+    if (glow) expect(glow.props.width).toBeGreaterThanOrEqual(80 * 8)
     await ui.unmount()
   }
 })
@@ -116,6 +118,9 @@ test('the pane shows each bar with a detail line, on every surface', async ($, o
     const backdrop = await ui.find({ type: 'Svg' })
     expect(backdrop === undefined).toBe(surface === 'terminal')
     if (backdrop) expect(String(backdrop.props.source)).toContain('#f59e0b')
+    // Sized to the whole pane, not the frame's default.
+    if (backdrop) expect(backdrop.props.width).toBeGreaterThanOrEqual(40 * 8)
+    if (backdrop) expect(backdrop.props.height).toBeGreaterThanOrEqual(40 * 18)
     await ui.unmount()
   }
 })
