@@ -1,0 +1,9 @@
+{
+  "name": "pins",
+  "version": "0.1.0",
+  "description": "Pin Claude's replies into a Pinned pane you can come back to, from the desktop or your phone",
+  "author": { "name": "Guhan Sensam" },
+  "license": "MIT",
+  "repository": "https://github.com/Guhan-SenSam/claude-mods",
+  "types": "./types/index.d.ts"
+}

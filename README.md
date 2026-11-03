@@ -7,6 +7,8 @@ installs on its own.
 | Mod | What it does |
 |---|---|
 | [system-monitor](plugins/system-monitor) | Short live CPU, RAM and GPU bars above the prompt, each glowing brighter as it rises; `/sysmon` opens a detail pane |
+| [turn-receipt](plugins/turn-receipt) | A one-line receipt under each finished reply: time taken, tool calls, agents, files edited, tokens |
+| [pins](plugins/pins) | Pin replies into a Pinned pane; hover a reply and press Pin, or `/pin` from the phone |
 
 ## Install
 

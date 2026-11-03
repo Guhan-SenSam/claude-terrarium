@@ -1,8 +1,21 @@
 {
   "name": "claude-mods",
-  "owner": { "name": "Guhan Sensam" },
+  "owner": {
+    "name": "Guhan Sensam"
+  },
   "description": "The Claude Code mods Guhan uses: a system monitor, turn receipts and pinned replies",
   "plugins": [
-    { "name": "system-monitor", "source": "./plugins/system-monitor" }
+    {
+      "name": "system-monitor",
+      "source": "./plugins/system-monitor"
+    },
+    {
+      "name": "turn-receipt",
+      "source": "./plugins/turn-receipt"
+    },
+    {
+      "name": "pins",
+      "source": "./plugins/pins"
+    }
   ]
 }
