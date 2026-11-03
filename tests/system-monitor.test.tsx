@@ -79,6 +79,10 @@ test('the band is one row of short CPU, RAM and GPU bars', async ($, on) => {
 
     expect(row?.text).toBe('CPU ████░░░░  53%   RAM ██████░░  75%   GPU ███░░░░░  37%')
     expect(await ui.find({ type: 'Text', text: /chrome|TOP|\/mnt/ })).toBeUndefined()
+    // A scanner beam in the load's colours glides behind the row wherever there is Svg.
+    const glow = await ui.find({ type: 'Svg' })
+    expect(glow === undefined).toBe(surface === 'terminal')
+    if (glow) expect(String(glow.props.source)).toMatch(/#f59e0b.*<animate attributeName="x"/)
     await ui.unmount()
   }
 })

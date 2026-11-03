@@ -12,7 +12,8 @@ them from the desktop app or your phone while Claude works.
 CPU ████░░░░  42%   RAM █████░░░  63%   GPU █░░░░░░░  12%
 ```
 
-On a narrow prompt the bars drop out and the percentages stay.
+On a narrow prompt the bars drop out and the percentages stay. In the desktop app a scanner beam in
+the same load colours glides back and forth behind the row.
 
 **A detail pane**, opened with `/sysmon`: the same three bars at full width, each with a detail
 line (threads and load average, used memory and swap, VRAM and GPU temperature). In the desktop and

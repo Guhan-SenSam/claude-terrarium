@@ -145,10 +145,22 @@ export const register: Register = on => {
     const room = Math.floor((e.props.bodyColumns - 3 * (list.length - 1)) / list.length) - label - 5
     const cells = room >= 4 ? Math.min(BAR, room) : 0
 
-    return (
+    const row = (
       <Text mono wrap="truncate-end">
         {list.map((meter, i) => [i > 0 ? '   ' : '', meterRow(Text, meter, label, cells)])}
       </Text>
+    )
+    // The terminal has no Svg; on the desktop a glow sweeps behind the row.
+    if (e.surface === 'terminal') return row
+    const { Box, Svg } = $.ui.resolve(e)
+
+    return (
+      <Box>
+        <Box position="absolute" top={0} left={0} right={0} bottom={0} overflow="hidden">
+          <Svg source={glow(load(data))} alt="Glow tinted and paced by system load" isInteractive />
+        </Box>
+        <Box position="relative">{row}</Box>
+      </Box>
     )
   })
 
@@ -238,6 +250,37 @@ function backdrop(level: Load) {
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 300" width="100" height="300" preserveAspectRatio="xMidYMid slice">' +
     '<defs><filter id="soft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="14"/></filter></defs>' +
     `<g filter="url(#soft)" opacity="0.16">${colors.map(blob).join('')}</g>` +
+    '</svg>'
+  )
+}
+
+/**
+ * A scanner beam: a bright core in a soft halo gliding across the row and
+ * back, easing at each end. Only horizontal, so however much of its height
+ * the row clips away, it looks the same.
+ */
+function glow(level: Load) {
+  const { colors, seconds } = BACKDROP[level]
+  // calm 8 s there and back, busy 4 s, hot 2 s.
+  const dur = `${(seconds / 3.5).toFixed(1)}s`
+  const fade = (id: string, color: string) =>
+    `<linearGradient id="${id}" x1="0" x2="1" y1="0" y2="0">` +
+    `<stop offset="0" stop-color="${color}" stop-opacity="0"/>` +
+    `<stop offset="0.5" stop-color="${color}" stop-opacity="1"/>` +
+    `<stop offset="1" stop-color="${color}" stop-opacity="0"/>` +
+    '</linearGradient>'
+  // Both rects keep their centre on the same point, from 0 to 1200 and back.
+  const beam = (fill: string, width: number, opacity: number) =>
+    `<rect width="${width}" height="100" fill="url(#${fill})" opacity="${opacity}">` +
+    `<animate attributeName="x" values="${-width / 2};${1200 - width / 2};${-width / 2}" keyTimes="0;0.5;1" calcMode="spline" keySplines="0.45 0 0.55 1;0.45 0 0.55 1" dur="${dur}" repeatCount="indefinite"/>` +
+    '</rect>'
+
+  return (
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 100" width="1200" height="100" preserveAspectRatio="none">' +
+    `<defs>${fade('halo', colors[1])}${fade('core', colors[0])}</defs>` +
+    `<rect width="1200" height="100" fill="${colors[2]}" opacity="0.1"/>` +
+    beam('halo', 280, 0.4) +
+    beam('core', 50, 0.9) +
     '</svg>'
   )
 }
