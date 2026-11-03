@@ -1,6 +1,6 @@
 {
   "name": "system-monitor",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Short live CPU, RAM and GPU bars above the prompt, with a detail pane on /sysmon",
   "author": { "name": "Guhan Sensam" },
   "license": "MIT",
