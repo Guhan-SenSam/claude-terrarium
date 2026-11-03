@@ -1,28 +1,25 @@
 # System Monitor for Claude Code
 
-A Claude Code mod that keeps an eye on the machine while you work: live CPU, RAM, GPU and disk
-usage, plus the apps using the most CPU and memory. It's built for running heavy jobs (big builds,
-local models, emulators) and checking on them from the desktop app or your phone while Claude works.
+A Claude Code mod that keeps an eye on the machine while you work: short live bars for CPU, RAM
+and GPU. It's built for running heavy jobs (big builds, local models, emulators) and checking on
+them from the desktop app or your phone while Claude works.
 
 ## What it shows
 
-**A band above the prompt**, always up in the desktop app and the terminal:
+**One row above the prompt**, always up in the desktop app and the terminal:
 
 ```
-CPU ████░░░░░░  42%  RAM ██████░░░░  63%  GPU █░░░░░░░░░  12%
-/ 39%  /mnt/Dev 35% · RAM chrome×20 3.1G, java 1.9G · CPU chrome×20 2.5%
+CPU ████░░░░  42%   RAM █████░░░  63%   GPU █░░░░░░░  12%
 ```
 
-**A detail pane**, opened with `/sysmon`:
+On a narrow prompt the bars drop out and the percentages stay.
 
-- CPU, RAM and GPU bars with a sparkline of the last few minutes
-- load average, used/total memory and swap, VRAM and GPU temperature
-- every real disk with its free space (btrfs subvolumes and `/boot` are folded away)
-- the top 5 apps by CPU and by memory, with processes grouped by name (`chrome ×20`)
-- in the desktop and phone apps, a soft animated background that turns from teal to amber to red and
-  speeds up as the machine gets busier
+**A detail pane**, opened with `/sysmon`: the same three bars at full width, each with a detail
+line (threads and load average, used memory and swap, VRAM and GPU temperature). In the desktop and
+phone apps it has a soft animated background that turns from teal to amber to red and speeds up as
+the machine gets busier.
 
-Bars turn amber at 70% and red at 90%. Numbers refresh every 2 seconds, and disks every 30.
+Bars turn amber at 70% and red at 90%, and refresh every 2 seconds.
 
 ## Install
 
@@ -54,12 +51,12 @@ In the desktop app, where `/plugin` does not run: click **+** next to the prompt
 
 ## Requirements
 
-- Linux: it reads `/proc` and runs `df`.
+- Linux: it reads `/proc`.
 - An NVIDIA GPU is optional and read through `nvidia-smi`. A GPU that has runtime-suspended (hybrid
   graphics laptops) is left asleep rather than woken every two seconds.
 
-Everything stays on your machine. The mod runs `sh`, `cat`, `df`, `getconf` and `nvidia-smi`
-locally and sends nothing anywhere.
+Everything stays on your machine. The mod runs `sh`, `cat` and `nvidia-smi` locally and sends
+nothing anywhere.
 
 ## Develop
 

@@ -1,6 +1,3 @@
-/** One application: every process sharing a name, summed. */
-export type App = { name: string; count: number; cpuPercent: number; rssBytes: number }
-
 export type Gpu = {
   name: string
   percent: number
@@ -8,8 +5,6 @@ export type Gpu = {
   memTotalBytes: number
   tempC: number
 }
-
-export type Disk = { mount: string; usedBytes: number; totalBytes: number }
 
 export type Usage = {
   /** Epoch ms of the sample. */
@@ -24,11 +19,6 @@ export type Usage = {
   }
   /** `asleep` while the GPU is runtime-suspended; empty with no NVIDIA GPU. */
   gpus: Gpu[] | 'asleep'
-  disks: Disk[]
-  topCpu: App[]
-  topMemory: App[]
-  /** Recent percentages, oldest first, for the sparklines. */
-  history: { cpu: number[]; memory: number[]; gpu: number[] }
 }
 
 declare module 'claude-code' {

@@ -1,46 +1,27 @@
 import { atom, read, update } from 'claude-code'
 import type { ElementConstructor, EngineInterface, Register, TextProps, Timer } from 'claude-code'
 
-import type { App, Disk, Gpu, Usage } from '../types'
-import {
-  DF_ARGV,
-  FIND_NVIDIA,
-  GPU_ARGV,
-  PROC_SCRIPT,
-  apps,
-  cpuPercent,
-  parseDisks,
-  parseGpus,
-  parseProc,
-  pushHistory,
-  topBy,
-  type ProcSample,
-} from './sample'
+import type { Gpu, Usage } from '../types'
+import { FIND_NVIDIA, GPU_ARGV, PROC_SCRIPT, cpuPercent, parseGpus, parseProc, type ProcSample } from './sample'
 
 const PANE = 'system-monitor'
 const TITLE = 'System'
 const EVERY_MS = 2000
-// df is slow to change; read it every 15 ticks (30 s).
-const DISK_EVERY = 15
-const HISTORY = 120
-const TOP = 5
-const LABEL = 6
+// The band's bars stay short; they shrink, then go, when the prompt is narrow.
+const BAR = 8
 
 // Change the tag when Usage's fields change: it declines what an earlier
 // version stored, which outlives a reload.
 const usage = atom({ plugin: 'system-monitor', key: 'usage' } as const, null, {
-  shape: 'usage-1',
+  shape: 'usage-2',
 })
 
 // Module variables start over on a reload; that costs one CPU delta.
 let timer: Timer | undefined
 let isBusy = false
-let tick = 0
 let last: ProcSample | undefined
-let disks: Disk[] = []
 let gpuDirs: string[] | undefined
 let hasNvidiaSmi = true
-let pageSize = 4096
 let lastError = ''
 
 async function readGpus($: EngineInterface): Promise<Gpu[] | 'asleep'> {
@@ -71,35 +52,13 @@ async function sample($: EngineInterface) {
   if (isBusy) return
   isBusy = true
   try {
-    const [proc, gpus, df] = await Promise.all([
-      $.process.run(['sh', '-c', PROC_SCRIPT]),
-      readGpus($),
-      tick % DISK_EVERY === 0 ? $.process.run(DF_ARGV) : undefined,
-    ])
-    tick++
-    if (df) disks = parseDisks(df.stdout)
+    const [proc, gpus] = await Promise.all([$.process.run(['sh', '-c', PROC_SCRIPT]), readGpus($)])
     const now = parseProc(proc.stdout)
     const prev = last
     last = now
-    const list = apps(prev, now, pageSize)
-    const cpu = prev ? cpuPercent(prev, now) : undefined
-    const memPercent = (now.memory.usedBytes / now.memory.totalBytes) * 100
-    const gpuPercent = Array.isArray(gpus) && gpus[0] ? gpus[0].percent : 0
+    const cpu = prev ? { percent: cpuPercent(prev, now), threads: now.threads, load1: now.load1 } : null
     const at = await $.clock.now()
-    await update($, usage, old => ({
-      at,
-      cpu: cpu === undefined ? null : { percent: cpu, threads: now.threads, load1: now.load1 },
-      memory: now.memory,
-      gpus,
-      disks,
-      topCpu: prev ? topBy(list, 'cpuPercent', TOP) : [],
-      topMemory: topBy(list, 'rssBytes', TOP),
-      history: {
-        cpu: cpu === undefined ? (old?.history.cpu ?? []) : pushHistory(old?.history.cpu, cpu, HISTORY),
-        memory: pushHistory(old?.history.memory, memPercent, HISTORY),
-        gpu: pushHistory(old?.history.gpu, gpuPercent, HISTORY),
-      },
-    }))
+    await update($, usage, () => ({ at, cpu, memory: now.memory, gpus }))
     lastError = ''
   } catch (error) {
     const text = error instanceof Error ? error.message : String(error)
@@ -116,15 +75,43 @@ function start($: EngineInterface) {
   timer = $.clock.every(EVERY_MS, () => void sample($))
 }
 
+/** One bar: a percentage, `measuring` before the first CPU delta, or a sleeping GPU. */
+type Meter = { label: string; percent?: number; isAsleep?: boolean; detail?: string }
+
+function meters(data: Usage): Meter[] {
+  const { cpu, memory, gpus } = data
+  const gpuMeters: Meter[] =
+    gpus === 'asleep'
+      ? [{ label: 'GPU', isAsleep: true }]
+      : gpus.map((gpu, i) => ({
+          label: gpus.length > 1 ? `GPU${i}` : 'GPU',
+          percent: gpu.percent,
+          detail: `VRAM ${gib(gpu.memUsedBytes)} / ${gib(gpu.memTotalBytes)} GiB · ${gpu.tempC}°C`,
+        }))
+
+  return [
+    {
+      label: 'CPU',
+      percent: cpu?.percent,
+      detail: cpu ? `${cpu.threads} threads · load ${cpu.load1.toFixed(2)}` : undefined,
+    },
+    {
+      label: 'RAM',
+      percent: memoryPercent(memory),
+      detail:
+        `${gib(memory.usedBytes)} / ${gib(memory.totalBytes)} GiB` +
+        (memory.swapTotalBytes > 0 ? ` · swap ${gib(memory.swapUsedBytes)} GiB` : ''),
+    },
+    ...gpuMeters,
+  ]
+}
 
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     await $.command.register({
       name: 'sysmon',
-      description: 'Show or hide the detailed system monitor pane (history, top 5 apps)',
+      description: 'Show or hide the system monitor pane (CPU, RAM, GPU)',
     })
-    const size = await $.process.run(['getconf', 'PAGESIZE']).catch(() => undefined)
-    pageSize = Number(size?.stdout.trim()) || 4096
     // The band above the prompt is always up, so sampling always runs.
     start($)
 
@@ -147,157 +134,41 @@ export const register: Register = on => {
     }
   })
 
-  // Two compact rows above the prompt: the meters, then disks and top apps.
+  // One row above the prompt: `CPU ████░░░░  42%   RAM …   GPU …`.
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     const data = await read($, usage)
     if (e.props.hasSurvey || !data) return next(e)
 
-    const { Box, Text } = $.ui.resolve(e)
-    const { gpus } = data
-    const meters: [string, number | undefined][] = [
-      ['CPU', data.cpu?.percent],
-      ['RAM', memoryPercent(data.memory)],
-      ...(gpus === 'asleep'
-        ? []
-        : gpus.map((gpu, i): [string, number] => [gpus.length > 1 ? `GPU${i}` : 'GPU', gpu.percent])),
-    ]
-    // Each meter is `CPU ████░░  42%`, two spaces apart; bars share what is left.
-    const fixed = meters.reduce((sum, [label]) => sum + label.length + 6, 0) + 2 * (meters.length - 1)
-    const room = Math.floor((e.props.bodyColumns - fixed) / meters.length)
-    const cells = room >= 4 ? Math.min(12, room) : 0
-    const disks = data.disks.map((disk, i) => {
-      const percent = (disk.usedBytes / disk.totalBytes) * 100
-
-      return [
-        i > 0 ? '  ' : '',
-        <Text dimColor>{disk.mount} </Text>,
-        <Text color={tone(percent)}>{Math.round(percent)}%</Text>,
-      ]
-    })
-    const top = (list: App[], value: (app: App) => string) =>
-      list.map(app => `${app.name}${app.count > 1 ? `×${app.count}` : ''} ${value(app)}`).join(', ')
+    const { Text } = $.ui.resolve(e)
+    const list = meters(data)
+    const label = labelWidth(list)
+    const room = Math.floor((e.props.bodyColumns - 3 * (list.length - 1)) / list.length) - label - 5
+    const cells = room >= 4 ? Math.min(BAR, room) : 0
 
     return (
-      <Box flexDirection="column">
-        <Text mono wrap="truncate-end">
-          {meters.map(([label, percent], i) => [
-            i > 0 ? '  ' : '',
-            <Text bold>{label} </Text>,
-            percent === undefined
-              ? <Text dimColor>{'…'.padStart(cells + 5)}</Text>
-              : [...bar(Text, percent, cells), `${Math.round(percent)}%`.padStart(5)],
-          ])}
-          {gpus === 'asleep' && <Text dimColor>  GPU asleep</Text>}
-        </Text>
-        <Text mono wrap="truncate-end">
-          {disks}
-          {data.topMemory.length > 0 && (
-            <Text dimColor>{`${disks.length > 0 ? ' · ' : ''}RAM ${top(data.topMemory.slice(0, 2), app => gib(app.rssBytes) + 'G')}`}</Text>
-          )}
-          {data.topCpu.length > 0 && (
-            <Text dimColor>{` · CPU ${top(data.topCpu.slice(0, 2), app => app.cpuPercent.toFixed(1) + '%')}`}</Text>
-          )}
-        </Text>
-      </Box>
+      <Text mono wrap="truncate-end">
+        {list.map((meter, i) => [i > 0 ? '   ' : '', meterRow(Text, meter, label, cells)])}
+      </Text>
     )
   })
 
+  // The same bars, full width, with a detail line each.
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
     const { Box, Text } = $.ui.resolve(e)
     const data = await read($, usage)
     if (!data) return <Text dimColor>Reading system usage…</Text>
 
-    const width = Math.max(28, e.props.bodyColumns)
-    const indent = ' '.repeat(LABEL)
-
-    const meter = (label: string, percent: number, labelWidth = LABEL) => {
-      const cells = width - labelWidth - 5
-
-      return (
-        <Text mono>
-          <Text bold>{fit(label, labelWidth - 1).padEnd(labelWidth)}</Text>
-          {bar(Text, percent, cells)}
-          {`${Math.round(percent)}%`.padStart(5)}
-        </Text>
-      )
-    }
-    const detail = (text: string, labelWidth = LABEL) => (
-      <Text mono dimColor>{' '.repeat(labelWidth) + fit(text, width - labelWidth)}</Text>
-    )
-    const spark = (history: number[]) => (
-      <Text mono color="subtle">{indent + sparkline(history, width - LABEL)}</Text>
-    )
-    const appRow = (app: App, value: string) => {
-      const count = app.count > 1 ? ` ×${app.count}` : ''
-      const name = fit(app.name, width - 2 - count.length - 1 - value.length)
-      const gap = width - 2 - name.length - count.length - value.length
-
-      return (
-        <Text mono>
-          {'  ' + name}
-          <Text dimColor>{count}</Text>
-          {' '.repeat(Math.max(1, gap)) + value}
-        </Text>
-      )
-    }
-
-    const { cpu, memory, gpus } = data
-    // Mount points get as wide a label as they need, up to a third of the pane.
-    const diskLabel = Math.min(
-      Math.floor(width / 3),
-      Math.max(LABEL, ...data.disks.map(disk => disk.mount.length + 1)),
-    )
-
+    const width = Math.max(24, e.props.bodyColumns)
+    const list = meters(data)
+    const label = labelWidth(list)
     const body = (
       <Box position="relative" flexDirection="column" gap={1}>
-        <Box flexDirection="column">
-          {cpu ? meter('CPU', cpu.percent) : <Text mono bold>CPU   <Text dimColor>measuring…</Text></Text>}
-          {spark(data.history.cpu)}
-          {cpu && detail(`${cpu.threads} threads · load ${cpu.load1.toFixed(2)}`)}
-        </Box>
-        <Box flexDirection="column">
-          {meter('RAM', memoryPercent(memory))}
-          {spark(data.history.memory)}
-          {detail(
-            `${gib(memory.usedBytes)} / ${gib(memory.totalBytes)} GiB` +
-              (memory.swapTotalBytes > 0 ? ` · swap ${gib(memory.swapUsedBytes)} GiB` : ''),
-          )}
-        </Box>
-        {gpus === 'asleep' && (
-          <Text mono bold>GPU   <Text dimColor>asleep (not polled, to let it stay off)</Text></Text>
-        )}
-        {gpus !== 'asleep' &&
-          gpus.map((gpu, i) => (
-            <Box flexDirection="column">
-              {meter(gpus.length > 1 ? `GPU${i}` : 'GPU', gpu.percent)}
-              {i === 0 && spark(data.history.gpu)}
-              {detail(`VRAM ${gib(gpu.memUsedBytes)} / ${gib(gpu.memTotalBytes)} GiB · ${gpu.tempC}°C`)}
-              {detail(gpu.name)}
-            </Box>
-          ))}
-        {data.disks.length > 0 && (
+        {list.map(meter => (
           <Box flexDirection="column">
-            <Text mono bold>DISK</Text>
-            {data.disks.map(disk => (
-              <Box flexDirection="column">
-                {meter(disk.mount, (disk.usedBytes / disk.totalBytes) * 100, diskLabel)}
-                {detail(
-                  `${gib(disk.totalBytes - disk.usedBytes, 0)} GiB free of ${gib(disk.totalBytes, 0)}`,
-                  diskLabel,
-                )}
-              </Box>
-            ))}
+            <Text mono>{meterRow(Text, meter, label, width - label - 5)}</Text>
+            {meter.detail && <Text mono dimColor>{' '.repeat(label) + fit(meter.detail, width - label)}</Text>}
           </Box>
-        )}
-        <Box flexDirection="column">
-          <Text mono bold>TOP CPU <Text dimColor>(% of all cores)</Text></Text>
-          {data.topCpu.length === 0 && detail('measuring…')}
-          {data.topCpu.map(app => appRow(app, `${app.cpuPercent.toFixed(1)}%`))}
-        </Box>
-        <Box flexDirection="column">
-          <Text mono bold>TOP MEMORY</Text>
-          {data.topMemory.map(app => appRow(app, `${gib(app.rssBytes)} GiB`))}
-        </Box>
+        ))}
         <Text mono dimColor>updated {clock(data.at)} · every {EVERY_MS / 1000}s</Text>
       </Box>
     )
@@ -314,6 +185,26 @@ export const register: Register = on => {
       </Box>
     )
   })
+}
+
+/** Labels padded to the longest, plus a space. */
+function labelWidth(list: Meter[]) {
+  return Math.max(...list.map(meter => meter.label.length)) + 1
+}
+
+/** `CPU ████░░░░  42%`; `cells` 0 leaves the bar out. */
+function meterRow(Text: ElementConstructor<TextProps>, meter: Meter, label: number, cells: number) {
+  const name = <Text bold>{meter.label.padEnd(label)}</Text>
+  if (meter.isAsleep) return [name, <Text dimColor>asleep</Text>]
+  if (meter.percent === undefined) return [name, <Text dimColor>{'…'.padStart(cells + 5)}</Text>]
+  const filled = Math.round((clamp(meter.percent) / 100) * cells)
+
+  return [
+    name,
+    <Text color={tone(meter.percent)}>{'█'.repeat(filled)}</Text>,
+    <Text dimColor>{'░'.repeat(cells - filled)}</Text>,
+    `${Math.round(meter.percent)}%`.padStart(5),
+  ]
 }
 
 type Load = 'calm' | 'busy' | 'hot'
@@ -351,16 +242,6 @@ function backdrop(level: Load) {
   )
 }
 
-/** `████░░░░`: the filled share in the load's tone; nothing when `cells` is 0. */
-function bar(Text: ElementConstructor<TextProps>, percent: number, cells: number) {
-  const filled = Math.round((clamp(percent) / 100) * cells)
-
-  return [
-    <Text color={tone(percent)}>{'█'.repeat(filled)}</Text>,
-    <Text dimColor>{'░'.repeat(cells - filled)}</Text>,
-  ]
-}
-
 function memoryPercent(memory: Usage['memory']) {
   return (memory.usedBytes / memory.totalBytes) * 100
 }
@@ -377,17 +258,8 @@ function fit(text: string, room: number) {
   return text.length <= room ? text : text.slice(0, Math.max(0, room - 1)) + '…'
 }
 
-function gib(bytes: number, digits = 1) {
-  return (bytes / 1024 ** 3).toFixed(digits)
-}
-
-const BLOCKS = '▁▂▃▄▅▆▇█'
-
-function sparkline(history: number[], cells: number) {
-  return history
-    .slice(-cells)
-    .map(n => BLOCKS[Math.min(BLOCKS.length - 1, Math.floor((clamp(n) / 100) * BLOCKS.length))])
-    .join('')
+function gib(bytes: number) {
+  return (bytes / 1024 ** 3).toFixed(1)
 }
 
 function clock(at: number) {
