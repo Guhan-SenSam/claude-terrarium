@@ -1,6 +1,6 @@
 {
   "name": "thinking-weather",
-  "version": "0.6.4",
+  "version": "0.7.0",
   "description": "A pixel-art valley behind the conversation: society advances from the Stone Age to a sci-fi future as the context fills and falls back at compaction, while the weather follows Claude (storms, lightning per tool call), the clock, the seasons and your town's real weather",
   "author": {
     "name": "Guhan Sensam"

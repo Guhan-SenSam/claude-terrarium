@@ -1,6 +1,6 @@
 {
   "name": "pins",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Pin Claude's replies into a Pinned pane you can come back to, from the desktop or your phone",
   "author": { "name": "Guhan Sensam" },
   "license": "MIT",
