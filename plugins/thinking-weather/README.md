@@ -35,8 +35,8 @@ rolls fog in, and behind it society falls back to the Stone Age: the fog lifts o
 |---|---|
 | 0-20% | Stone Age |
 | 20-40% | Village |
-| 40-60% | Industrial (drawn as the village for now) |
-| 60-80% | Modern (drawn as the village for now) |
+| 40-60% | Industrial: a mill with tall stacks, a steam train at the station, brick terraces, coal-smoke haze |
+| 60-80% | Modern: wind turbines, pylons, an asphalt road, flats and glass towers with aircraft lights, an airliner overhead |
 | 80-100% | Sci-fi |
 
 `/weather-era <era>` previews one; `/weather-era` says where society stands.

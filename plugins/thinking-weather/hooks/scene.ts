@@ -3,6 +3,10 @@ import {
   GROUND_FUTURE, GROUND_FUTURE_SNOW, GROUND_SNOW, GROUND_SPRING, GROUND_STONE, GROUND_STONE_AUTUMN, GROUND_STONE_SNOW,
   GROUND_STONE_SPRING, GROUND_STONE_WINTER, GROUND_WINTER, LAMPS, LIFT, MILL, NEON_LAMPS, OVERCAST, SCIFI_WINDOWS,
   STONE_HUTS, TURBINE, WINDOWS,
+  GROUND_INDUSTRIAL, GROUND_INDUSTRIAL_AUTUMN, GROUND_INDUSTRIAL_SNOW, GROUND_INDUSTRIAL_SPRING, GROUND_INDUSTRIAL_WINTER,
+  GROUND_MODERN, GROUND_MODERN_AUTUMN, GROUND_MODERN_SNOW, GROUND_MODERN_SPRING, GROUND_MODERN_WINTER,
+  IND_CHIMNEYS, IND_DOORS, IND_EAVES, IND_LAMPS, IND_STACKS, IND_WINDOWS,
+  MOD_BEACONS, MOD_DOORS, MOD_EAVES, MOD_LAMPS, MOD_MILL, MOD_WINDOWS,
 } from './art'
 import type { Cond, Era, Holiday, Outside, Season, SessionEvents, Sky, Strike } from '../types'
 
@@ -24,20 +28,30 @@ const ZONES = [
 ]
 const GROUND_Y = 152
 
-// Rain: a fixed scatter of 2-cell drops under the clouds, two rows apart per frame. It moves
-// only a few times a second, since every step redraws the whole scene.
-const RAIN = (() => {
-  const r = rng(9)
+// The storm's rain falls RAIN_GAP rows per RAIN_MS, two rows a step: 30 steps a second, only
+// while Claude works.
+const RAIN_MS = 800
+
+// Rain: columns that each carry a 2-cell drop every RAIN_GAP rows (the .rain dash pattern). The
+// dashes slide down their column two rows a step, so drops really fall and loop without a jump;
+// each column starts a random way above its top so the drops are out of step with each other.
+// A column ends where the rain lands, so nothing needs clipping.
+const RAIN_GAP = 48
+function columns(seed: number, spans: readonly { x0: number; x1: number; top: number; bottom: number; n: number }[]): string {
+  const r = rng(seed)
   let d = ''
-  for (const z of ZONES) {
-    for (let i = 0; i < 16; i++) {
-      const x = z.x0 + Math.floor(r() * (z.x1 - z.x0))
-      const y = z.y - 8 + Math.floor(r() * (GROUND_Y - z.y + 8))
-      d += `M${x + 0.5} ${y}v2`
+  for (const z of spans) {
+    const used = new Set<number>()
+    for (let i = 0; i < z.n; i++) {
+      let x = z.x0 + Math.floor(r() * (z.x1 - z.x0))
+      while (used.has(x)) x = x + 1 >= z.x1 ? z.x0 : x + 1
+      used.add(x)
+      d += `M${x + 0.5} ${z.top - Math.floor(r() * RAIN_GAP)}V${z.bottom}`
     }
   }
   return d
-})()
+}
+const RAIN = columns(9, ZONES.map(z => ({ x0: z.x0, x1: z.x1, top: z.y - 8, bottom: GROUND_Y + 2, n: 7 })))
 
 function rng(seed: number) {
   let s = (seed * 2654435761) >>> 0
@@ -194,15 +208,15 @@ function sky(look: Look, out: Outside): string {
   const lit = `style="filter:brightness(${Math.max(0.35, look.bright).toFixed(2)})"`
   const clouds = grey ? `<g ${lit}>${OVERCAST}</g>` : out.cond === 'partly' ? `<g ${lit}>${FAIR}</g>` : ''
   return `<linearGradient id="skyg" x1="0" y1="0" x2="0" y2="1">${stops}</linearGradient>` +
-    `<rect y="-1" width="320" height="162" fill="url(#skyg)"/>${stars}${era === 'scifi' && !grey ? futureSky(look) : ''}${bodies}${clouds}`
+    `<rect y="-1" width="320" height="162" fill="url(#skyg)"/>${stars}${era === 'scifi' && !grey ? futureSky(look) : ''}${bodies}` +
+    `${era === 'industrial' && !grey ? smog(look) : ''}${clouds}`
 }
 
 // ---- the real weather outside, when Claude is not bringing its own storm ----
 const GREY = new Set<Cond>(['overcast', 'rain', 'snow', 'thunder'])
-// ---- eras: which land, buildings and lights each age of society draws. Industrial and modern are
-// drawn as the village until their art exists. ----
-export type Drawn = 'stone' | 'village' | 'scifi'
-export const drawnEra = (e: Era | undefined): Drawn => (e === 'stone' ? 'stone' : e === 'scifi' ? 'scifi' : 'village')
+// ---- eras: which land, buildings and lights each age of society draws ----
+export type Drawn = Era
+export const drawnEra = (e: Era | undefined): Drawn => e ?? 'village'
 
 type Win = readonly (readonly [number, number, number, number, number])[]
 type Parts = {
@@ -224,6 +238,16 @@ const ERAS: Record<Drawn, Parts> = {
     windows: WINDOWS, warm: '#ffcf6a', halo: '#ffb347', glass: '#33425f',
     lamps: LAMPS, lampLight: '#ffcf6a', lampHead: '#ffe6a0', chimneys: CHIMNEYS, mill: MILL, sail: '#efe6d2', doors: DOORS, eaves: EAVES,
   },
+  industrial: {
+    grounds: { spring: GROUND_INDUSTRIAL_SPRING, summer: GROUND_INDUSTRIAL, autumn: GROUND_INDUSTRIAL_AUTUMN, winter: GROUND_INDUSTRIAL_WINTER, snow: GROUND_INDUSTRIAL_SNOW },
+    windows: IND_WINDOWS, warm: '#ffc05a', halo: '#ff9a3a', glass: '#2e3446',
+    lamps: IND_LAMPS, lampLight: '#ffd27a', lampHead: '#fff0b8', chimneys: IND_CHIMNEYS, sail: '#efe6d2', doors: IND_DOORS, eaves: IND_EAVES,
+  },
+  modern: {
+    grounds: { spring: GROUND_MODERN_SPRING, summer: GROUND_MODERN, autumn: GROUND_MODERN_AUTUMN, winter: GROUND_MODERN_WINTER, snow: GROUND_MODERN_SNOW },
+    windows: MOD_WINDOWS, warm: '#fff0c4', halo: '#ffe0a0', glass: '#3e5674',
+    lamps: MOD_LAMPS, lampLight: '#ffb050', lampHead: '#ffd890', chimneys: [], mill: MOD_MILL, sail: '#f4f6f8', doors: MOD_DOORS, eaves: MOD_EAVES,
+  },
   scifi: {
     grounds: { spring: GROUND_FUTURE, summer: GROUND_FUTURE, autumn: GROUND_FUTURE, winter: GROUND_FUTURE, snow: GROUND_FUTURE_SNOW },
     windows: SCIFI_WINDOWS, warm: '#9ff0ff', halo: '#4fd8ff', glass: '#8a9ab8',
@@ -231,13 +255,10 @@ const ERAS: Record<Drawn, Parts> = {
   },
 }
 
-// Light rain across the whole valley, and snowflakes; both step on the half-second clock.
-const WIDE_RAIN = (() => {
-  const r = rng(21)
-  let d = ''
-  for (let i = 0; i < 120; i++) d += `M${Math.floor(r() * 320) + 0.5} ${Math.floor(r() * 170) - 8}v2`
-  return d
-})()
+// Light rain across the whole valley (falling columns like the storm's, at half its speed), and
+// snowflakes on the half-second clock.
+const WIDE_RAIN = columns(21, [{ x0: 0, x1: 320, top: -8, bottom: 180, n: 34 }])
+const DRIZZLE_MS = 1600
 const FLAKES = (() => {
   const r = rng(5)
   let d = ''
@@ -248,7 +269,7 @@ const FLAKES = (() => {
 function outside(out: Outside, look: Look, now: number, stormRain: boolean): string {
   let s = ''
   if ((out.cond === 'rain' || out.cond === 'thunder') && !stormRain) {
-    s += `<path class="rain" stroke="#b8c8de" stroke-opacity=".4" d="${WIDE_RAIN}"/>`
+    s += `<path class="rain" style="animation-duration:${DRIZZLE_MS}ms;animation-delay:${-(now % DRIZZLE_MS)}ms" stroke="#b8c8de" stroke-opacity=".4" d="${WIDE_RAIN}"/>`
   }
   if (out.cond === 'snow') {
     s += `<path class="flakes" style="animation-delay:${-(now % 4000)}ms" stroke="#f4f8fd" stroke-opacity="${(0.55 + 0.4 * look.bright).toFixed(2)}" d="${FLAKES}"/>`
@@ -326,6 +347,8 @@ function town(look: Look, now: number, waiting: boolean, era: Drawn = 'village')
       `<path stroke="#6b4b3a" d="M${mx} ${my}h1"/>`
   }
   if (era === 'stone') out += campfire(look, now)
+  if (era === 'industrial') out += mills(look, now)
+  if (era === 'modern') out += city(look, now)
   if (era === 'scifi') out += future(look, now)
   // the pond's glint shifts now and then
   out += `<path class="ga" style="${loop(now, 2000)}" stroke="#eaf7ff" stroke-opacity="${(0.9 - 0.6 * dark).toFixed(2)}" d="M62 174h7M57 173h3"/>` +
@@ -360,6 +383,34 @@ function campfire(look: Look, now: number): string {
       `<path class="sb" style="${loop(now, 1000)}" stroke="#ffd26a" d="M${x} ${y - 1}h1M${x} ${y - 2}h1"/>` +
       `<path class="smoke" style="${loop(now, 2000)}" stroke="${mixHex('#d6d9e0', '#59607a', 1 - look.bright)}" stroke-opacity=".6" d="M${x} ${y - 6}h1M${x + 1} ${y - 8}h2M${x} ${y - 10}h2"/>`
   }).join('')
+}
+
+// The industrial age's factory stacks: heavy smoke, two billows a stack out of step.
+function mills(look: Look, now: number): string {
+  const smoke = mixHex('#5a5660', '#2a2830', 1 - look.bright)
+  return IND_STACKS.map(([x, y], i) => [0, 2].map(k =>
+    `<path class="smoke" style="${loop(now, 2000, (i + k) % 4)}" stroke="${smoke}" stroke-opacity=".75" ` +
+    `d="M${x - 1} ${y}h3M${x - 2} ${y - 2}h4M${x - 1} ${y - 3}h5M${x} ${y - 5}h4M${x + 1} ${y - 7}h4"/>`).join('')).join('')
+}
+
+// The industrial sky: a brown haze of coal smoke lying over the valley.
+function smog(look: Look): string {
+  const c = mixHex('#9a8466', '#3a3028', 1 - look.bright)
+  return `<linearGradient id="smog" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${c}" stop-opacity="0"/>` +
+    `<stop offset=".6" stop-color="${c}" stop-opacity=".28"/><stop offset="1" stop-color="${c}" stop-opacity=".42"/></linearGradient>` +
+    `<rect y="70" width="320" height="92" fill="url(#smog)"/>`
+}
+
+// The modern age's moving lights: red aircraft lights on the tallest towers, and an airliner
+// crossing high up at the birds' slow pace, its contrail behind it.
+function city(look: Look, now: number): string {
+  const beacons = MOD_BEACONS.map(([x, y]) => `M${x} ${y}h1`).join('')
+  const body = mixHex('#eef2f6', '#5a6278', 1 - look.bright)
+  return `<path class="sa" style="${loop(now, 1000)}" stroke="#ff3a3a" d="${beacons}"/>` +
+    `<path class="sb" style="${loop(now, 1000)}" stroke="#6a2424" d="${beacons}"/>` +
+    `<g class="bird" style="${loop(now, 180000, 160)}"><path stroke="#ffffff" stroke-opacity="${(0.5 * look.bright).toFixed(2)}" d="M-40 22h26"/>` +
+    `<path stroke="${body}" d="M-14 22h5M-12 21h1M-11 23h1"/>` +
+    (look.lights > 0.05 ? `<path class="sa" style="${loop(now, 1000)}" stroke="#ff4a4a" d="M-9 22h1"/>` : '') + `</g>`
 }
 
 // The future's moving lights: blinking beacons on the spires, a car climbing the space elevator,
@@ -643,8 +694,8 @@ ${OUTSIDE_CSS}
 ${EVENTS_CSS}
 @keyframes dim-in{from{opacity:0}to{opacity:1}}
 @keyframes dim-out{from{opacity:1}to{opacity:0}}
-.rain{animation:rain 1.5s steps(3) -${now % 1500}ms infinite}
-@keyframes rain{from{transform:translateY(-6px)}to{transform:translateY(6px)}}
+.rain{stroke-dasharray:2 ${RAIN_GAP - 2};animation:rain ${RAIN_MS}ms steps(${RAIN_GAP / 2}) -${now % RAIN_MS}ms infinite}
+@keyframes rain{from{stroke-dashoffset:0}to{stroke-dashoffset:-${RAIN_GAP}}}
 @keyframes rain-in{0%{opacity:0}70%,100%{opacity:1}}
 .bolt,.flash{opacity:0;animation:strike ${STRIKE_MS}ms steps(1) both}
 .flash{animation-name:flash}

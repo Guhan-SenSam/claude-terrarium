@@ -3,7 +3,7 @@ import type { On } from 'claude-code'
 
 import { condOf, eraLevel, holidayOf, moonPhase, seasonOf, solarHour } from '../hooks/outside'
 import { scene } from '../hooks/scene'
-import type { Sky } from '../types'
+import type { Era, Sky } from '../types'
 
 const LIMIT = 131072
 const AT = 1_700_000_000_000
@@ -153,7 +153,7 @@ test('holiday decorations stay under the size limit on a stormy night', async ()
   for (const holiday of ['halloween', 'christmas', 'newyear', 'july4'] as const) {
     const s: Sky = { mode: 'working', modeSince: AT - 400_000, stormSince: AT - 400_000, strikes, at: AT }
     const ev = { fogUntil: AT + 1000, kites: [1, 2, 3, 4, 5, 6].map(i => ({ id: `k${i}`, since: AT - i * 1000 })), fireworks: [{ t: AT - 500, seed: 2 }] }
-    for (const era of ['stone', 'village', 'scifi'] as const) {
+    for (const era of ['stone', 'village', 'industrial', 'modern', 'scifi'] as const) {
       const svg = scene(s, AT, 22, { cond: 'snow', season: 'winter', snowCover: true, moon: 0.5, holiday, era, eraSince: AT - 500 }, ev)
       expect(svg.length < LIMIT).toBe(true)
     }
@@ -186,8 +186,17 @@ test('/weather-era shows another era on the backdrop', async ($, on) => {
 
 test('each era draws its own settlement', async () => {
   const s: Sky = { mode: 'idle', modeSince: 0, stormSince: 0, strikes: [], at: AT }
-  const draw = (era: 'stone' | 'village' | 'scifi') => scene(s, AT, 12, { cond: 'clear', season: 'summer', snowCover: false, era })
-  expect(draw('stone')).not.toBe(draw('village'))
-  expect(draw('scifi')).not.toBe(draw('village'))
+  const draw = (era: Era) => scene(s, AT, 12, { cond: 'clear', season: 'summer', snowCover: false, era })
+  const eras = ['stone', 'village', 'industrial', 'modern', 'scifi'] as const
+  expect(new Set(eras.map(draw)).size).toBe(eras.length)
   expect(draw('scifi').includes('#e8dcff')).toBe(true) // the ringed planet
+  expect(draw('industrial').includes('id="smog"')).toBe(true) // coal smoke over the valley
+  expect(draw('modern').includes('#ff3a3a')).toBe(true) // aircraft lights on the towers
+})
+
+test('rain falls down its columns and loops without a jump', async () => {
+  const s: Sky = { mode: 'working', modeSince: AT - 10_000, stormSince: AT - 10_000, strikes: [], at: AT }
+  const svg = scene(s, AT, 12)
+  expect(svg).toMatch(/\.rain\{stroke-dasharray:2 46;animation:rain \d+ms steps\(24\)/)
+  expect(svg.includes('to{stroke-dashoffset:-48}')).toBe(true)
 })

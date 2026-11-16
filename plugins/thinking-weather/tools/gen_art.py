@@ -934,6 +934,301 @@ stone_spring, stone_autumn, stone_winter, stone_snow = (variant(SPRING_MAP, more
 future_snow = variant({**SNOW_MAP, **{c: SNOW[1] for c in ['#24485a', '#2a5468', '#1f3a4a', '#22404f', '#1c3442', '#2e5c70']},
                        '#4a9a6c': SNOW[0], '#3e8a60': SNOW[1], '#347a56': SNOW[2], '#2a6a4c': SNOW[3], '#205a40': SNOW[4]}, snow_on_top, future)
 
+# ---- the industrial and modern ages, on their own random stream so every layer above comes out
+# byte-for-byte as before (the skies below still draw from the era stream). ----
+_era_rng, rng = rng, random.Random(1851)
+SLATE, SLATE_D = '#4a5060', '#383d4a'
+BRICKS = [('#8a4a3a', '#6e3a2e'), ('#7a4232', '#603426'), ('#9a5642', '#7a4434'), ('#84503e', '#683e30')]
+FLAT, FLAT_D = '#6a6e76', '#55585f'
+ROOFS_ALL += [SLATE, SLATE_D, FLAT, FLAT_D, '#5a6670', '#c8ccd0', '#7a3a2a']   # snow settles on these too
+
+
+def fill(L, x0, y0, x1, y1, col, side=None):
+    """Cells x0..x1-1, y0..y1-1; the right-hand column in `side` (a shaded wall)."""
+    for y in range(y0, y1):
+        for x in range(x0, x1):
+            vput(L, x, y, side if side and x == x1 - 1 else col)
+
+
+def gable(L, x, top, w, roof, roof_d, rise=None):
+    """A pitched roof over a wall of width w whose top row is `top`: lit left slope, shaded right."""
+    for k in range(min(rise if rise is not None else w // 2 + 2, w // 2 + 2)):
+        for xx in range(x - 1 + k, x + w + 1 - k):
+            vput(L, xx, top - 1 - k, roof if xx < x + w // 2 + 1 else roof_d)
+
+
+def grid(lst, x0, x1, y0, y1, dx, dy, w=1, hh=1, p=0.75):
+    for wy in range(y0, y1, dy):
+        for wx in range(x0, x1, dx):
+            lst.append([wx, wy, w, hh, 1 if rng.random() < p else 0])
+
+
+def church(L, wins):
+    """The village church, kept through the later ages."""
+    fill(L, 220, HORIZON - 1, 230, HORIZON + 8, '#d8cfbd', '#b9af9c')
+    for k in range(6):
+        for xx in range(219 + k, 231 - k):
+            vput(L, xx, HORIZON - 1 - k, '#3e4a63' if xx < 225 else '#2e374a')
+    fill(L, 221, HORIZON - 16, 225, HORIZON - 1, '#c7b89a', '#a8987a')
+    for k in range(5):
+        for xx in range(221 + k // 2, 225 - k // 2):
+            vput(L, xx, HORIZON - 17 - k, '#3e4a63')
+    for (cx, cy) in [(222, HORIZON - 23), (222, HORIZON - 24), (221, HORIZON - 23), (223, HORIZON - 23)]:
+        vput(L, cx, cy, '#e8d27a')
+    wins.append([222, HORIZON - 12, 1, 2, 1])
+    for wx in (221, 224, 227):
+        wins.append([wx, HORIZON + 2, 1, 2, 1])
+
+
+def lamp_posts(L, xs, top, col, lst, arm=False):
+    for lx in xs:
+        for y in range(top + 1, HORIZON + 15):
+            vput(L, lx, y, col)
+        if arm:                                   # a modern streetlight leans its head over the lane
+            vput(L, lx + 1, top, col); vput(L, lx + 2, top, col)
+            lst.append([lx + 2, top + 1])
+        else:
+            vput(L, lx - 1, top, col); vput(L, lx + 1, top, col)
+            lst.append([lx, top])
+
+
+def path_centre(y):
+    k = (H - y) / (H - HORIZON - 1)
+    return 160 + 26 * math.sin(k * 3.0) * (1 - k), k
+
+
+# -- Industrial: soot-dulled fields, a railway with a steam train at the station, a mill with tall
+# stacks on the left, and a town of brick terraces round the church with its own factory --
+IND_MAP = {'#a7c066': '#8fa65e', '#89b05a': '#7a9a52', '#7ea852': '#729a4e', '#c9a94a': '#b39a4e', '#d8bb5c': '#c2a85a',
+           '#8b7558': '#6e665c', '#74604a': '#5c554c', '#a39377': '#837a6c',                 # a cobbled road
+           '#7f9cc0': '#8a96a8', '#6a86ad': '#6e809c', '#7d97bb': '#7a8aa2'}                 # hills behind smoke
+ind = land(IND_MAP)
+IND_WINDOWS, IND_CHIMNEYS, IND_LAMPS, IND_DOORS, IND_EAVES = [], [], [], [], []
+IND_STACKS = []   # [x, y] tops of the tall factory stacks, which pour heavy smoke
+
+
+def stack(L, x, top, base, w=3):
+    for y in range(top, base):
+        for xx in range(x, x + w):
+            vput(L, xx, y, '#4a4a52' if y < top + 2 else '#7a3a2a' if xx < x + w - 1 else '#5e2c20')
+    IND_STACKS.append([x + w // 2, top - 1])
+
+
+def sawtooth(L, x0, x1, base, h, wall, side, wins):
+    """A weaving shed: brick walls under a sawtooth roof of north lights."""
+    fill(L, x0, base - h, x1, base, wall, side)
+    for x in range(x0 - 1, x1 + 1):
+        t = (x - x0 + 1) % 5
+        if t == 4:
+            for y in range(base - h - 3, base - h):
+                vput(L, x, y, '#9ab0c0')                     # the glazed face of a tooth
+        else:
+            for y in range(base - h - t, base - h):
+                vput(L, x, y, SLATE if t < 2 else SLATE_D)
+    grid(wins, x0 + 1, x1 - 1, base - h + 2, base - 2, 3, 3, p=0.85)
+
+
+# the railway, end to end across the fields, with a level crossing over the road
+RAIL_Y = HORIZON + 8
+for x in range(0, 184):
+    vput(ind, x, RAIL_Y + 1, '#7a7468')                      # ballast
+    vput(ind, x, RAIL_Y, '#3a3a42')                          # rail
+    if x % 2 == 0:
+        vput(ind, x, RAIL_Y + 1, '#5a3d26')                  # sleepers
+# the mill on the left, where the windmill stood
+sawtooth(ind, 46, 86, HORIZON + 5, 8, '#8a4a3a', '#6e3a2e', IND_WINDOWS)
+stack(ind, 50, HORIZON - 26, HORIZON - 3)
+stack(ind, 79, HORIZON - 20, HORIZON - 3)
+# the station, and a train standing at it
+fill(ind, 124, HORIZON + 1, 142, HORIZON + 7, '#9a5642', '#7a4434')
+gable(ind, 124, HORIZON + 1, 18, SLATE, SLATE_D, rise=4)
+fill(ind, 131, HORIZON - 6, 135, HORIZON - 3, '#9a5642', '#7a4434')
+vput(ind, 132, HORIZON - 5, '#f0ead8'); vput(ind, 133, HORIZON - 5, '#f0ead8')   # the station clock
+grid(IND_WINDOWS, 126, 141, HORIZON + 3, HORIZON + 5, 3, 3, p=0.9)
+fill(ind, 118, RAIL_Y - 1, 150, RAIL_Y, '#a8a296')           # platform edge
+LOCO = [
+    '..f.........cccc',
+    '..f.........cwwc',
+    'bbbbbbbbbbbbcccc',
+    'bhhhhhhhhhhhcccc',
+    'bbbbbbbbbbbbbbbb',
+    '.rr.rr.rr..rr.r.',
+]
+for y, row in enumerate(LOCO):
+    for x, c in enumerate(row):
+        if c != '.':
+            vput(ind, 92 + x, RAIL_Y - 6 + y, {'f': '#2a2a30', 'b': '#26282e', 'h': '#4a4e58', 'c': '#5a2a24', 'w': '#2a1f1a', 'r': '#a8382a'}[c])
+IND_WINDOWS.append([105, RAIL_Y - 5, 2, 1, 1])
+IND_CHIMNEYS.append([94, RAIL_Y - 7])                        # the funnel
+for cx in (109, 123):                                        # two carriages
+    fill(ind, cx, RAIL_Y - 5, cx + 12, RAIL_Y - 1, '#6a2a2a', '#521f1f')
+    fill(ind, cx, RAIL_Y - 6, cx + 12, RAIL_Y - 5, '#3a3a42')
+    for wx in range(cx + 1, cx + 11, 3):
+        IND_WINDOWS.append([wx, RAIL_Y - 4, 2, 1, 1])
+    for wx in (cx + 1, cx + 9):
+        vput(ind, wx, RAIL_Y - 1, '#1b1b22'); vput(ind, wx + 1, RAIL_Y - 1, '#1b1b22')
+# the town: cobbles, a back row of terraces, the church, a factory, and tall front terraces
+fill(ind, 184, HORIZON + 1, 316, HORIZON + 14, '#5a7a48')
+for y in range(HORIZON + 14, HORIZON + 17):
+    for x in range(184, 316):
+        vput(ind, x, y, '#6e665c' if (x + y) % 3 else '#5c554c')
+x = 186
+while x < 312:                                               # back terraces, joined wall to wall
+    if 218 <= x <= 231 or 236 <= x <= 262:
+        x += 1
+        continue
+    wall, side = BRICKS[(x // 5) % len(BRICKS)]
+    fill(ind, x, HORIZON + 2, x + 5, HORIZON + 6, wall, side)
+    gable(ind, x, HORIZON + 2, 5, SLATE, SLATE_D, rise=2)
+    if (x // 5) % 2 == 0:
+        fill(ind, x + 3, HORIZON - 1, x + 4, HORIZON + 1, '#5a4a44')
+        IND_CHIMNEYS.append([x + 3, HORIZON - 2])
+    IND_WINDOWS.append([x + 1, HORIZON + 3, 1, 1, 1 if rng.random() < 0.75 else 0])
+    x += 5
+church(ind, IND_WINDOWS)
+sawtooth(ind, 238, 262, HORIZON + 6, 7, '#7a4232', '#603426', IND_WINDOWS)
+stack(ind, 255, HORIZON - 30, HORIZON - 3)
+x = 188
+while x < 312:                                               # front terraces, three storeys
+    w = rng.choice([8, 9, 10]); hh = rng.choice([8, 9, 10])
+    if not (262 <= x + w and x <= 272):                      # leave the lantern clear
+        wall, side = rng.choice(BRICKS)
+        fill(ind, x, HORIZON + 14 - hh, x + w, HORIZON + 14, wall, side)
+        gable(ind, x, HORIZON + 14 - hh, w, SLATE, SLATE_D, rise=3)
+        for y in range(HORIZON + 14 - hh + 3, HORIZON + 14, 3):          # a stone string course
+            for xx in range(x, x + w - 1):
+                if (y - (HORIZON + 14 - hh)) % 6 == 0:
+                    vput(ind, xx, y, '#b8a890')
+        grid(IND_WINDOWS, x + 1, x + w - 2, HORIZON + 14 - hh + 1, HORIZON + 12, 3, 3, w=1, hh=2)
+        if rng.random() < 0.7:
+            fill(ind, x + w - 3, HORIZON + 14 - hh - 5, x + w - 2, HORIZON + 14 - hh - 1, '#5a4a44')
+            IND_CHIMNEYS.append([x + w - 3, HORIZON + 14 - hh - 6])
+        vput(ind, x + w - 3, HORIZON + 13, '#2a1f1a'); vput(ind, x + w - 3, HORIZON + 12, '#2a1f1a')
+        IND_DOORS.append([x + w - 3, HORIZON + 13])
+        IND_EAVES.append([x - 1, HORIZON + 14 - hh, w + 2])
+    x += w + rng.choice([1, 2])
+lamp_posts(ind, (200, 238, 296), HORIZON + 8, '#1b1b22', IND_LAMPS)
+for (tx, tb, th, tr) in [(12, 168, 8, 10), (33, 161, 5, 7), (306, 170, 8, 9)]:
+    tree_on(ind, tx, tb, th, tr)
+lantern_post(ind)
+
+# -- Modern: a motorway-grey road with a centre line, wind turbines, a farm of steel barns and
+# silos, pylons striding over the fields, and a town of flats and office towers round the church --
+MOD_MAP = {'#8b7558': '#5a5d64', '#74604a': '#4a4d54', '#a39377': '#4a4d54',               # asphalt
+           '#5a3d26': '#8a9098', '#7a5636': '#c0c6ce'}                                       # a crash barrier
+mod = land(MOD_MAP)
+MOD_WINDOWS, MOD_LAMPS, MOD_DOORS, MOD_EAVES = [], [], [], []
+MOD_BEACONS = []   # [x, y] red aircraft lights on the tallest towers
+for y in range(HORIZON + 4, H):                              # dashed white centre line
+    if (y // 2) % 2 == 0:
+        cx, _ = path_centre(y)
+        vput(mod, int(cx), y, '#e8e4d0')
+# wind turbines on the left: the near one turns live (scene.ts), the far one stands still
+MOD_MILL = [40, HORIZON - 20]
+for y in range(HORIZON - 20, HORIZON + 4):
+    vput(mod, 40, y, '#e8ecf0')
+    if y > HORIZON - 8:
+        vput(mod, 41, y, '#c8ccd2')
+for y in range(HORIZON - 12, HORIZON + 3):
+    vput(mod, 66, y, '#d8dce2')
+for (dx, dy) in [(0, -1), (0, -2), (0, -3), (0, -4), (0, -5), (1, 1), (2, 1), (3, 2), (4, 2), (-1, 1), (-2, 1), (-3, 2), (-4, 2)]:
+    vput(mod, 66 + dx, HORIZON - 12 + dy, '#eef0f4')
+# the farm: a steel barn and two silos
+fill(mod, 94, HORIZON - 1, 108, HORIZON + 4, '#7a8a98', '#5a6670')
+gable(mod, 94, HORIZON - 1, 14, '#5a6670', '#4a545e', rise=2)
+fill(mod, 100, HORIZON + 1, 104, HORIZON + 4, '#3a4048')
+for sx in (110, 115):
+    fill(mod, sx, HORIZON - 9, sx + 4, HORIZON + 4, '#c8ccd0', '#a2a8ae')
+    for xx in range(sx, sx + 4):
+        vput(mod, xx, HORIZON - 10, '#dfe3e6')
+    vput(mod, sx + 1, HORIZON - 11, '#dfe3e6'); vput(mod, sx + 2, HORIZON - 11, '#dfe3e6')
+# pylons with the wires sagging between them
+PYLONS = [(132, HORIZON - 16), (174, HORIZON - 18)]
+for (px, top) in PYLONS:
+    for y in range(top, HORIZON + 4):
+        spread = (y - top) // 6
+        vput(mod, px - spread, y, '#5a5e66'); vput(mod, px + spread, y, '#5a5e66')
+        if (y - top) % 4 == 2:
+            for xx in range(px - spread, px + spread + 1):
+                vput(mod, xx, y, '#6e737c')
+    for xx in range(px - 3, px + 4):
+        vput(mod, xx, top + 2, '#5a5e66')
+    vput(mod, px, top - 1, '#5a5e66')
+for (x0, y0), (x1, y1) in zip([(112, HORIZON - 10)] + PYLONS, PYLONS + [(186, HORIZON - 12)]):
+    for arm in (-3, 3):
+        a, b = x0 + (arm if (x0, y0) in PYLONS else 0), x1 + arm
+        ya, yb = y0 + 2 if (x0, y0) in PYLONS else y0, y1 + 2
+        for xx in range(min(a, b), max(a, b) + 1):
+            t = (xx - a) / max(1, b - a)
+            vput(mod, xx, int(round(ya + (yb - ya) * t + 4 * t * (1 - t))), '#3a3e46')
+# the town: pavements and a lane, flats and towers behind the church, shops along the front
+fill(mod, 184, HORIZON + 1, 316, HORIZON + 14, '#6a9a52')
+for y in range(HORIZON + 14, HORIZON + 17):
+    for x in range(184, 316):
+        vput(mod, x, y, '#a8aab0' if y == HORIZON + 14 else '#4a4d54')
+for x in range(186, 316, 6):
+    vput(mod, x, HORIZON + 16, '#d8d4c4'); vput(mod, x + 1, HORIZON + 16, '#d8d4c4')
+TOWERS = [(186, 12, 18, 'flats'), (200, 11, 28, 'glass'), (233, 12, 34, 'glass'), (247, 10, 16, 'flats'),
+          (259, 13, 24, 'flats'), (275, 12, 40, 'glass'), (290, 9, 20, 'flats'), (301, 12, 26, 'glass')]
+for (x0, w, hh, kind) in TOWERS:
+    top, base = HORIZON + 7 - hh, HORIZON + 7
+    if kind == 'glass':
+        fill(mod, x0, top, x0 + w, base, '#6a8aa8', '#4e6a86')
+        for y in range(top, base):
+            for xx in range(x0, x0 + w - 1):
+                if (xx - x0) % 2 == 1 and y % 3 != 0:
+                    vput(mod, xx, y, '#8aaac4')                 # mullions catching the light
+        grid(MOD_WINDOWS, x0 + 1, x0 + w - 1, top + 2, base - 1, 2, 3, p=0.55)
+    else:
+        fill(mod, x0, top, x0 + w, base, rng.choice(['#cfc6b4', '#b8b4ac', '#d4c2a4']), '#9a9488')
+        for y in range(top + 3, base - 1, 3):                    # balconies
+            for xx in range(x0 + 1, x0 + w - 1):
+                vput(mod, xx, y, '#8a8478')
+        grid(MOD_WINDOWS, x0 + 1, x0 + w - 1, top + 1, base - 1, 2, 3, p=0.7)
+    fill(mod, x0 - 1, top - 1, x0 + w + 1, top, FLAT_D)          # parapet
+    MOD_EAVES.append([x0 - 1, top - 1, w + 2])
+    if hh >= 34:                                                 # a mast and a light on the tallest
+        for y in range(top - 6, top - 1):
+            vput(mod, x0 + w // 2, y, '#8a8e96')
+        MOD_BEACONS.append([x0 + w // 2, top - 7])
+church(mod, MOD_WINDOWS)
+SHOPS = ['#e0d6c4', '#c8d0d8', '#e6c9a8', '#d0d8c8']
+AWNINGS = ['#c0443a', '#3a7ac0', '#3a9a6a', '#d0a03a']
+x = 188
+while x < 312:                                               # shops and houses on the front row
+    w = rng.choice([9, 10, 11, 12]); hh = rng.choice([6, 7, 8])
+    if not (262 <= x + w and x <= 272):
+        fill(mod, x, HORIZON + 14 - hh, x + w, HORIZON + 14, rng.choice(SHOPS), '#a8a49a')
+        fill(mod, x - 1, HORIZON + 13 - hh, x + w + 1, HORIZON + 14 - hh, FLAT)
+        aw = rng.choice(AWNINGS)
+        for xx in range(x, x + w):
+            vput(mod, xx, HORIZON + 10, aw if xx % 2 else '#f0ece4')
+        grid(MOD_WINDOWS, x + 1, x + w - 2, HORIZON + 14 - hh + 1, HORIZON + 9, 3, 3, w=2, hh=1, p=0.8)
+        MOD_WINDOWS.append([x + 1, HORIZON + 11, w - 5, 2, 1])   # the shop window
+        vput(mod, x + w - 3, HORIZON + 13, '#2a2e36'); vput(mod, x + w - 3, HORIZON + 12, '#2a2e36')
+        MOD_DOORS.append([x + w - 3, HORIZON + 13])
+        MOD_EAVES.append([x - 1, HORIZON + 13 - hh, w + 2])
+    x += w + rng.choice([1, 2, 3])
+for (cx, col) in [(204, '#c0443a'), (247, '#e8ecf0'), (284, '#3a6ac0')]:   # parked cars
+    fill(mod, cx, HORIZON + 15, cx + 6, HORIZON + 16, col)
+    fill(mod, cx + 1, HORIZON + 14, cx + 5, HORIZON + 15, '#8ab0d0')
+    vput(mod, cx + 1, HORIZON + 16, '#1b1b22'); vput(mod, cx + 4, HORIZON + 16, '#1b1b22')
+lamp_posts(mod, (196, 236, 298), HORIZON + 7, '#5a5e66', MOD_LAMPS, arm=True)
+for (tx, tb, th, tr) in [(12, 168, 8, 10), (33, 161, 5, 7), (306, 170, 8, 9), (150, HORIZON + 1, 2, 3)]:
+    tree_on(mod, tx, tb, th, tr)
+lantern_post(mod, '#5a5e66')
+
+# both ages in every season
+IND_SNOW_MAP = {**SNOW_MAP, '#8fa65e': SNOW[1], '#7a9a52': SNOW[1], '#729a4e': SNOW[1], '#b39a4e': SNOW[0], '#c2a85a': SNOW[0],
+                '#6e665c': '#b0aaa0', '#5c554c': '#9a948a', '#837a6c': '#c4beb2', '#5a7a48': SNOW[1]}
+ind_spring, ind_autumn, ind_winter, ind_snow = (variant(SPRING_MAP, more_flowers, ind), variant(AUTUMN_MAP, leaves, ind),
+                                                variant(MILD, None, ind), variant(IND_SNOW_MAP, snow_on_top, ind))
+MOD_SNOW_MAP = {**SNOW_MAP, '#5a5d64': '#6a6d74', '#4a4d54': '#5a5d64', '#6a9a52': SNOW[1]}   # gritted roads stay dark
+mod_spring, mod_autumn, mod_winter, mod_snow = (variant({**SPRING_MAP, '#6a9a52': '#7fbf5a'}, more_flowers, mod),
+                                                variant({**AUTUMN_MAP, '#6a9a52': '#8a9a4a'}, leaves, mod),
+                                                variant({**MILD, '#6a9a52': '#6a7a4a'}, None, mod), variant(MOD_SNOW_MAP, snow_on_top, mod))
+rng = _era_rng
+
 # ---- skies: a few fair-weather clouds, and a grey overcast deck ----
 fair = Layer(['#5d9fd8', '#86bfea', '#b6dcf6', '#e2f4fd', '#ffffff'])
 fitems = []
@@ -954,7 +1249,11 @@ for y in range(0, 72):
 frag = {'SKY': SKY, 'BANK_L': emit_safe(bank_l), 'BANK_R': emit_safe(bank_r), 'BANK_T': emit_safe(bank_t), 'GROUND': emit_safe(ground), 'GROUND_SPRING': emit_safe(spring), 'GROUND_AUTUMN': emit_safe(autumn), 'GROUND_WINTER': emit_safe(winter), 'GROUND_SNOW': emit_safe(snowy), 'FAIR': emit_safe(fair), 'OVERCAST': emit_safe(overcast),
         'GROUND_STONE': emit_safe(stone), 'GROUND_STONE_SPRING': emit_safe(stone_spring), 'GROUND_STONE_AUTUMN': emit_safe(stone_autumn),
         'GROUND_STONE_WINTER': emit_safe(stone_winter), 'GROUND_STONE_SNOW': emit_safe(stone_snow),
-        'GROUND_FUTURE': emit_safe(future), 'GROUND_FUTURE_SNOW': emit_safe(future_snow)}
+        'GROUND_FUTURE': emit_safe(future), 'GROUND_FUTURE_SNOW': emit_safe(future_snow),
+        'GROUND_INDUSTRIAL': emit_safe(ind), 'GROUND_INDUSTRIAL_SPRING': emit_safe(ind_spring), 'GROUND_INDUSTRIAL_AUTUMN': emit_safe(ind_autumn),
+        'GROUND_INDUSTRIAL_WINTER': emit_safe(ind_winter), 'GROUND_INDUSTRIAL_SNOW': emit_safe(ind_snow),
+        'GROUND_MODERN': emit_safe(mod), 'GROUND_MODERN_SPRING': emit_safe(mod_spring), 'GROUND_MODERN_AUTUMN': emit_safe(mod_autumn),
+        'GROUND_MODERN_WINTER': emit_safe(mod_winter), 'GROUND_MODERN_SNOW': emit_safe(mod_snow)}
 lines = ['// Generated by tools/gen_art.py: vector pixel-art layers (320x180). Do not edit.',
          '// Seam handling follows the method of BackdropKit (MIT, github.com/winchxyz/backdropkit).']
 for k, v in frag.items():
@@ -962,7 +1261,11 @@ for k, v in frag.items():
 import json
 for k, v in (('WINDOWS', WINDOWS), ('CHIMNEYS', CHIMNEYS), ('LAMPS', LAMPS), ('MILL', MILL), ('DOORS', DOORS), ('EAVES', EAVES),
              ('STONE_HUTS', STONE_HUTS), ('FIRES', FIRES), ('SCIFI_WINDOWS', SCIFI_WINDOWS), ('BEACONS', BEACONS),
-             ('FUTURE_EAVES', FUTURE_EAVES), ('FUTURE_DOORS', FUTURE_DOORS), ('TURBINE', TURBINE), ('LIFT', LIFT), ('NEON_LAMPS', NEON_LAMPS)):
+             ('FUTURE_EAVES', FUTURE_EAVES), ('FUTURE_DOORS', FUTURE_DOORS), ('TURBINE', TURBINE), ('LIFT', LIFT), ('NEON_LAMPS', NEON_LAMPS),
+             ('IND_WINDOWS', IND_WINDOWS), ('IND_CHIMNEYS', IND_CHIMNEYS), ('IND_LAMPS', IND_LAMPS), ('IND_DOORS', IND_DOORS),
+             ('IND_EAVES', IND_EAVES), ('IND_STACKS', IND_STACKS),
+             ('MOD_WINDOWS', MOD_WINDOWS), ('MOD_LAMPS', MOD_LAMPS), ('MOD_DOORS', MOD_DOORS), ('MOD_EAVES', MOD_EAVES),
+             ('MOD_MILL', MOD_MILL), ('MOD_BEACONS', MOD_BEACONS)):
     lines.append(f"export const {k} = {json.dumps(v)} as const")
 (MOD / 'hooks' / 'art.ts').write_text('\n'.join(lines) + '\n')
 print({k: len(v) for k, v in frag.items()}, 'total', sum(len(v) for v in frag.values()))
@@ -980,7 +1283,9 @@ for y in range(H):
 skyimg[..., 3] = 255
 base = Image.fromarray(skyimg)
 for name, layers in (('summer', [ground]), ('spring', [fair, spring]), ('autumn', [fair, autumn]), ('winter', [overcast, winter]), ('snow', [overcast, snowy]),
-                     ('stone', [stone]), ('stone_snow', [stone_snow]), ('future', [future]), ('future_snow', [future_snow])):
+                     ('stone', [stone]), ('stone_snow', [stone_snow]), ('future', [future]), ('future_snow', [future_snow]),
+                     ('industrial', [ind]), ('industrial_autumn', [fair, ind_autumn]), ('industrial_snow', [overcast, ind_snow]),
+                     ('modern', [mod]), ('modern_spring', [fair, mod_spring]), ('modern_snow', [overcast, mod_snow])):
     im = base.copy()
     for l in layers:
         im = Image.alpha_composite(im, Image.fromarray(l.rgba()))

@@ -42,7 +42,7 @@ What it shows:
 | Compaction | Fog rolls through |
 | A long turn | Heavier rain after 2 minutes, darker after 5 |
 
-Eras follow the context window: 0-20% Stone Age, 20-40% village, 40-60% industrial, 60-80% modern (industrial and modern are drawn as the village for now), 80-100% sci-fi (spires, space elevator, hovercraft, ringed planet, aurora at night, an ion storm in place of the rain clouds). Compaction rolls fog in and resets society to the Stone Age.
+Eras follow the context window: 0-20% Stone Age, 20-40% village, 40-60% industrial (a mill with stacks, a steam train, brick terraces, coal smoke), 60-80% modern (turbines, pylons, flats and glass towers), 80-100% sci-fi (spires, space elevator, hovercraft, ringed planet, aurora at night, an ion storm in place of the rain clouds). Compaction rolls fog in and resets society to the Stone Age.
 
 The outside world: the sky follows the local clock (dawn, day, dusk, night, sun and moon); with a town set, dawn and dusk land on its real sunrise and sunset and the moon shows its real phase. Seasons by date (southern hemisphere flipped): spring blossom, summer wheat, autumn trees, a muted winter; snow on the ground only when the weather reports snow (with no town, winter is snowy). With a town set, the idle sky follows its weather: clear, partly, overcast, rain, snow, fog, thunder. Holidays: Halloween (from Oct 15), December, New Year's Eve, July 4.
 
