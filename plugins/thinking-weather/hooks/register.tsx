@@ -465,7 +465,14 @@ export const register: Register = (on, options: PluginOptions) => {
     if (args.era !== undefined) eraOverride = args.era === 'auto' ? undefined : (String(args.era) as Era)
     if (args.holiday !== undefined) holidayOverride = args.holiday === 'auto' ? undefined : (String(args.holiday) as Holiday | 'none')
     if (typeof args.hour === 'number' && args.hour >= 0 && args.hour < 24) hourOverride = args.hour
-    return { result: await preview($, args.sky === undefined ? undefined : String(args.sky), args.season === undefined ? undefined : String(args.season)) }
+    const shown = await preview($, args.sky === undefined ? undefined : String(args.sky), args.season === undefined ? undefined : String(args.season))
+    // say what else changed too, so the reply matches the backdrop
+    const extra = [
+      args.era === undefined ? '' : eraOverride === undefined ? 'The era follows the context again.' : `The ${eraOverride} era.`,
+      args.holiday === undefined ? '' : holidayOverride === undefined ? 'Holidays follow the calendar again.' : holidayOverride === 'none' ? 'No holiday decorations.' : `Decorated for ${holidayOverride}.`,
+      hourOverride === undefined || typeof args.hour !== 'number' ? '' : `At ${String(Math.floor(hourOverride)).padStart(2, '0')}:${String(Math.round((hourOverride % 1) * 60)).padStart(2, '0')}.`,
+    ].filter(Boolean)
+    return { result: [shown, ...extra].join(' ') }
   })
 
   on('command.run', { command: 'weather-tour' }, async ($, e, next) => ({ text: await startTour($) }))

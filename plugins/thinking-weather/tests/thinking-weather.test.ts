@@ -184,6 +184,14 @@ test('/weather-era shows another era on the backdrop', async ($, on) => {
   expect((await svg()).includes('#e8dcff')).toBe(true) // the future's ringed planet
 })
 
+test('the preview tool says which era it shows', async ($, on) => {
+  engine(on)
+  const r = await $.tool.call({ tool: 'mcp__thinking-weather__weather_preview', era: 'modern' } as never)
+  expect(String((r as { result?: unknown }).result)).toContain('modern era')
+  const back = await $.tool.call({ tool: 'mcp__thinking-weather__weather_preview', era: 'auto' } as never)
+  expect(String((back as { result?: unknown }).result)).toContain('follows the context')
+})
+
 test('each era draws its own settlement', async () => {
   const s: Sky = { mode: 'idle', modeSince: 0, stormSince: 0, strikes: [], at: AT }
   const draw = (era: Era) => scene(s, AT, 12, { cond: 'clear', season: 'summer', snowCover: false, era })
