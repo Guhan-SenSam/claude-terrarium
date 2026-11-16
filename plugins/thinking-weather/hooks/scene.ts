@@ -1,8 +1,8 @@
 import {
-  BANK_L, BANK_R, BANK_T, CHIMNEYS, FAIR, GROUND, GROUND_AUTUMN, GROUND_SNOW, GROUND_SPRING, GROUND_WINTER, LAMPS,
+  BANK_L, BANK_R, BANK_T, CHIMNEYS, DOORS, EAVES, FAIR, GROUND, GROUND_AUTUMN, GROUND_SNOW, GROUND_SPRING, GROUND_WINTER, LAMPS,
   MILL, OVERCAST, WINDOWS,
 } from './art'
-import type { Cond, Outside, Season, Sky, Strike } from '../types'
+import type { Cond, Holiday, Outside, Season, SessionEvents, Sky, Strike } from '../types'
 
 // A 320x180 grid of pixel cells, all vector (the desktop app strips embedded images).
 // Every animation is timed from `now` at draw time, so a scene the app restarts (a resize, a
@@ -74,9 +74,11 @@ function bolt(st: Strike, ageMs: number): string {
   }
   const sparks = `M${xEnd - 2} ${GROUND_Y - 1}h1m2 -1h1m1 1h1`
   const style = `style="animation-delay:${-ageMs}ms"`
-  return `<g class="bolt" ${style}><path stroke="#9fc8ff" stroke-opacity=".55" d="${glow.join('')}"/>` +
-    `<path stroke="#fff" d="${core.join('')}${sparks}"/></g>` +
-    `<rect class="flash" ${style} y="-1" width="320" height="182" fill="#e8f0ff"/>`
+  // a failed tool call strikes red
+  const [halo, centre, sky] = st.err ? ['#ff5a4a', '#ffd6cc', '#ffb4a6'] : ['#9fc8ff', '#fff', '#e8f0ff']
+  return `<g class="bolt" ${style}><path stroke="${halo}" stroke-opacity=".55" d="${glow.join('')}"/>` +
+    `<path stroke="${centre}" d="${core.join('')}${sparks}"/></g>` +
+    `<rect class="flash" ${style} y="-1" width="320" height="182" fill="${sky}"/>`
 }
 
 // ---- time of day: the local hour picks a blend of these looks ----
@@ -141,6 +143,27 @@ const STARS = (() => {
   return `<path stroke="#cfd8ff" d="${d}"/><path stroke="#ffffff" stroke-opacity=".9" d="${bright}"/>`
 })()
 
+// The moon in its real phase: the lit part bright, the rest a faint earthshine. Waxing is lit on
+// the right; a new moon is only the faint disc.
+function moonDisc(cx: number, cy: number, phase: number): string {
+  const r = 5
+  const k = Math.cos(2 * Math.PI * phase)
+  let lit = ''
+  let dark = ''
+  for (let y = -r; y <= r; y++) {
+    const w = Math.floor(Math.sqrt(r * r - y * y) + 0.3)
+    for (let x = -w; x < w; x++) {
+      const t = (x + 0.5) / Math.max(1, w)
+      const on = phase < 0.5 ? t > k : t < -k
+      if (on) lit += `M${cx + x} ${cy + y}h1`
+      else dark += `M${cx + x} ${cy + y}h1`
+    }
+  }
+  const glow = 0.04 + 0.1 * (1 - Math.abs(phase - 0.5) * 2)
+  return `<path stroke="#e9eef9" stroke-opacity="${glow.toFixed(2)}" d="${disc(cx, cy, 9)}"/>` +
+    `<path stroke="#2c3652" stroke-opacity=".7" d="${dark}"/><path stroke="#dfe6f5" d="${lit}"/>`
+}
+
 function sky(look: Look, out: Outside): string {
   const grey = GREY.has(out.cond)
   const greyTo = mixHex('#a3acb8', '#1a1f2a', 1 - look.bright)
@@ -162,8 +185,7 @@ function sky(look: Look, out: Outside): string {
     const p = t / 11.8
     const x = Math.round(30 + 260 * p)
     const y = Math.round(130 - 100 * Math.sin(Math.PI * p))
-    bodies += `<path stroke="#e9eef9" stroke-opacity=".12" d="${disc(x, y, 9)}"/><path stroke="#dfe6f5" d="${disc(x, y, 5)}"/>` +
-      `<path stroke="#b9c3d9" d="M${x - 2} ${y - 1}h2M${x + 1} ${y + 2}h1M${x - 1} ${y + 3}h1"/>`
+    bodies += moonDisc(x, y, out.moon ?? 0.5)
   }
   const stars = !grey && look.stars > 0.02 ? `<g opacity="${look.stars.toFixed(2)}">${STARS}</g>` : ''
   const lit = `style="filter:brightness(${Math.max(0.35, look.bright).toFixed(2)})"`
@@ -299,6 +321,157 @@ const TOWN_CSS = `.smoke{animation:smoke 2s steps(4) infinite}
 .ff{opacity:0;animation:ff 3s steps(1) infinite}
 @keyframes ff{0%{opacity:0}50%{opacity:1}67%{opacity:0}}`
 
+// ---- the session's own events ----
+export const NO_EVENTS: SessionEvents = { fogUntil: 0, kites: [], fireworks: [] }
+const FOG_IN_MS = 3000
+const FOG_OUT_MS = 4000
+export const FIREWORK_MS = 2500
+const KITE_COLOURS = ['#e05a4a', '#4aa2e3', '#ead27a', '#8cc36b', '#c78ae8']
+
+// A kite per subagent at work, flying over the town on a long string; each rises as it starts.
+function kites(ev: SessionEvents, now: number, look: Look): string {
+  const dim = mixHex('#ffffff', '#5a6070', 1 - look.bright)
+  return ev.kites.slice(0, 6).map((k, i) => {
+    const x = 192 + i * 22
+    const y = 46 + (i % 3) * 14
+    const c = KITE_COLOURS[i % KITE_COLOURS.length]!
+    const shade = mixHex(c, '#1a1f2a', 0.35)
+    const rise = Math.max(0, now - k.since)
+    // a diamond kite, its right half in shade, with cross spars and a tail of bows
+    const rows = [1, 3, 5, 7, 9, 7, 5, 3, 1]
+    const left = rows.map((w, j) => `M${x - (w - 1) / 2} ${y + j}h${(w + 1) / 2}`).join('')
+    const right = rows.map((w, j) => (w > 1 ? `M${x + 1} ${y + j}h${(w - 1) / 2}` : '')).join('')
+    const body = `<path stroke="${c}" d="${left}"/><path stroke="${shade}" d="${right}"/>` +
+      `<path stroke="#2a1f1a" stroke-opacity=".6" d="M${x - 4} ${y + 4}h9M${x} ${y + 1}v7"/>` +
+      `<path stroke="${dim}" stroke-opacity=".85" d="M${x} ${y + 9}h1M${x + 1} ${y + 10}h1M${x} ${y + 11}h1M${x - 1} ${y + 12}h1M${x} ${y + 13}h1"/>` +
+      `<path stroke="${c}" d="M${x - 1} ${y + 11}h1M${x + 2} ${y + 11}h1M${x - 2} ${y + 13}h1M${x + 1} ${y + 13}h1"/>`
+    const string = `<path stroke="${dim}" stroke-opacity=".45" d="${Array.from({ length: 18 }, (_, j) => `M${Math.round(x - (j * 10) / 18)} ${Math.round(y + 9 + (j * (150 - y - 9)) / 18)}h1`).join('')}"/>`
+    return `<g class="kite-in" style="animation-delay:${-rise}ms">${string}<g class="bob" style="animation-delay:${-((now + i * 500) % 2000)}ms">${body}</g></g>`
+  }).join('')
+}
+
+// A firework over the church: a rocket climbs, then bursts in three widening rings.
+function fireworks(ev: SessionEvents, now: number, palette = ['#ffd26a', '#ff7a8a', '#8ad8ff', '#b8ff8a', '#e0a8ff']): string {
+  return ev.fireworks.filter(f => now - f.t < FIREWORK_MS).map(f => {
+    const r = rng(f.seed)
+    const cx = 200 + Math.floor(r() * 50)
+    const cy = 70 + Math.floor(r() * 25)
+    const c = palette[Math.floor(r() * palette.length)]!
+    const ring = (rad: number) => {
+      let d = ''
+      const n = Math.max(8, Math.round(rad * 2.2))
+      for (let a = 0; a < n; a++) {
+        const t = (a / n) * Math.PI * 2
+        d += `M${Math.round(cx + Math.cos(t) * rad)} ${Math.round(cy + Math.sin(t) * rad * 0.9)}h1`
+      }
+      return d
+    }
+    const age = `animation-delay:${-(now - f.t)}ms`
+    return `<path class="fw-rocket" style="${age}" stroke="#ffe8b0" d="M${cx} ${cy}v3M${cx} ${cy + 5}v1"/>` +
+      `<path class="fw-1" style="${age}" stroke="#fff6dc" d="M${cx - 1} ${cy}h3M${cx} ${cy - 1}h1M${cx} ${cy + 1}h1${ring(4)}"/>` +
+      `<path class="fw-2" style="${age}" stroke="${c}" d="${ring(9)}${ring(6)}"/>` +
+      `<path class="fw-3" style="${age}" stroke="${c}" stroke-opacity=".6" d="${ring(14)}"/>`
+  }).join('')
+}
+
+// Fog rolling through while the conversation is compacted, then lifting.
+function compactFog(ev: SessionEvents, now: number, look: Look): string {
+  if (ev.fogUntil === 0 || now > ev.fogUntil + FOG_OUT_MS) return ''
+  const lifting = now > ev.fogUntil
+  const anim = lifting ? `fog-out ${FOG_OUT_MS}ms steps(8) ${-(now - ev.fogUntil)}ms both` : `fog-in ${FOG_IN_MS}ms steps(6) ${-Math.min(FOG_IN_MS, Math.max(0, now - (ev.fogUntil - 60_000)))}ms both`
+  return `<g style="animation:${anim}">${fog(look)}<rect y="-1" width="320" height="182" fill="${mixHex('#e3e8ee', '#3a4250', 1 - look.bright)}" fill-opacity=".18"/></g>`
+}
+
+const EVENTS_CSS = `.bob{animation:bob 2s steps(1) infinite}@keyframes bob{0%{transform:none}50%{transform:translateY(-1px)}}
+.kite-in{animation:kite-in 4s steps(8) both}@keyframes kite-in{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
+.fw-rocket,.fw-1,.fw-2,.fw-3{opacity:0;animation:${FIREWORK_MS}ms steps(1) both}
+.fw-rocket{animation-name:fwr}.fw-1{animation-name:fw1}.fw-2{animation-name:fw2}.fw-3{animation-name:fw3}
+@keyframes fwr{0%{opacity:1;transform:translateY(40px)}10%{transform:translateY(27px)}20%{transform:translateY(13px)}30%{opacity:1;transform:none}31%,100%{opacity:0}}
+@keyframes fw1{0%,30%{opacity:0}31%{opacity:1}50%,100%{opacity:0}}
+@keyframes fw2{0%,45%{opacity:0}46%{opacity:1}68%,100%{opacity:0}}
+@keyframes fw3{0%,62%{opacity:0}63%{opacity:.8}92%,100%{opacity:0}}
+@keyframes fog-in{from{opacity:0}to{opacity:1}}@keyframes fog-out{from{opacity:1}to{opacity:0}}`
+
+
+// ---- holidays: decorations on the town, drawn over the dimmed ground so their lights glow ----
+const TREE_X = 132
+const TREE_BASE = 172
+
+function holiday(h: Holiday | undefined, look: Look, now: number): string {
+  if (h === undefined) return ''
+  const night = look.lights
+  const dark = 1 - look.bright
+  let out = ''
+  if (h === 'halloween') {
+    const orange = mixHex('#e07a2a', '#3a2010', dark * 0.8)
+    const shade = mixHex('#a8541c', '#2a1408', dark * 0.8)
+    let body = ''
+    let rind = ''
+    let stems = ''
+    let faces = ''
+    DOORS.forEach(([x, y], i) => {
+      if (i % 2) return
+      const px = x + 2
+      body += `M${px} ${y - 1}h3M${px} ${y}h3`
+      rind += `M${px + 2} ${y - 1}h1M${px + 2} ${y}h1`
+      stems += `M${px + 1} ${y - 2}h1`
+      faces += `M${px} ${y - 1}h1M${px + 2} ${y - 1}h1M${px + 1} ${y}h1`
+    })
+    out += `<path stroke="${orange}" d="${body}"/><path stroke="${shade}" d="${rind}"/><path stroke="#3d6e36" d="${stems}"/>`
+    if (night > 0.05) out += `<path stroke="#ffd26a" stroke-opacity="${night.toFixed(2)}" d="${faces}"/>`
+  }
+  if (h === 'christmas' || h === 'newyear') {
+    // string lights on the front-row eaves, twinkling between two sets after dark
+    const colours = ['#ff5a4a', '#8cff7a', '#ffd26a', '#6ab8ff']
+    const sets: [string[], string[]] = [[], []]
+    EAVES.forEach(([x, y, w]) => {
+      for (let i = 0; i < w; i += 2) sets[(i / 2) % 2]!.push(`M${x + i} ${y}h1`)
+    })
+    const bulbs = (set: string[], k: number) => colours.map((c, j) =>
+      `<path stroke="${night > 0.05 ? c : mixHex(c, '#5a5a5a', 0.4)}" d="${set.filter((_, n) => n % 4 === (j + k) % 4).join('')}"/>`).join('')
+    out += night > 0.05
+      ? `<g class="sa" style="${loop(now, 1000)}">${bulbs(sets[0], 0)}</g><g class="sb" style="${loop(now, 1000)}">${bulbs(sets[1], 1)}</g>` +
+        `<g stroke-opacity="${(0.4 * night).toFixed(2)}">${bulbs(sets[0], 0)}${bulbs(sets[1], 1)}</g>`
+      : bulbs(sets[0], 0) + bulbs(sets[1], 1)
+    // a decorated tree in the meadow by the path
+    const green = mixHex('#2f6a3a', '#0e1f14', dark * 0.8)
+    const deep = mixHex('#1f4a2a', '#08140c', dark * 0.8)
+    let left = ''
+    let right = ''
+    for (let r = 0; r < 13; r++) {
+      const w = 1 + Math.floor(r * 0.7) * 2 - (r % 4 === 3 ? 2 : 0)
+      const y = TREE_BASE - 15 + r
+      const half = Math.max(0, Math.floor(w / 2))
+      left += `M${TREE_X - half} ${y}h${half + 1}`
+      if (half > 0) right += `M${TREE_X + 1} ${y}h${half}`
+    }
+    const baubles = [[-2, 4], [2, 6], [-3, 8], [1, 9], [3, 11], [-1, 12], [-4, 11], [0, 3]]
+      .map(([dx, dy], i) => `<path stroke="${colours[i % 4]}" stroke-opacity="${night > 0.05 ? 1 : 0.8}" d="M${TREE_X + dx!} ${TREE_BASE - 15 + dy!}h1"/>`).join('')
+    out += `<path stroke="${green}" d="${left}"/><path stroke="${deep}" d="${right}"/>${baubles}` +
+      `<path stroke="#5a3d26" d="M${TREE_X} ${TREE_BASE - 2}h2M${TREE_X} ${TREE_BASE - 1}h2"/>` +
+      `<path stroke="#ffe27a" d="M${TREE_X} ${TREE_BASE - 17}h1M${TREE_X - 1} ${TREE_BASE - 16}h3M${TREE_X} ${TREE_BASE - 15}h1"/>`
+    if (night > 0.05) out += `<path stroke="#ffe27a" stroke-opacity="${(0.25 * night).toFixed(2)}" d="${disc(TREE_X, TREE_BASE - 16, 3)}"/>`
+  }
+  if (h === 'july4' && night < 0.5) {
+    // bunting along the eaves by day
+    const flags = ['#d23a3a', '#f4f4f4', '#3a5ad2']
+    out += flags.map((c, j) => `<path stroke="${c}" d="${EAVES.map(([x, y, w]) => {
+      let d = ''
+      for (let i = j; i < w; i += 3) d += `M${x + i} ${y + 1}h1`
+      return d
+    }).join('')}"/>`).join('')
+  }
+  // New Year's Eve and the Fourth of July: a firework every few seconds after dark
+  if ((h === 'newyear' || h === 'july4') && night > 0.5) {
+    const every = 1500
+    const k = Math.floor(now / every)
+    const shows = [k, k - 1].map(n => ({ t: n * every, seed: n }))
+    out += fireworks({ ...NO_EVENTS, fireworks: shows }, now, h === 'july4' ? ['#ff5a5a', '#ffffff', '#6a8aff'] : undefined)
+  }
+  return out
+}
+
+
 // A roll in and out, one cell per step so it stays on the pixel grid, eased: in arrives fast
 // and settles, out starts slow and speeds away. Each segment steps its own share of the cells.
 const EASE = [0, 0.35, 0.7, 1] // time marks
@@ -318,7 +491,7 @@ function glide(name: string, axis: 'X' | 'Y', dist: number): string {
 
 export const CLEAR_SUMMER: Outside = { cond: 'clear', season: 'summer', snowCover: false }
 
-export function scene(s: Sky, now: number, hour: number, out: Outside = CLEAR_SUMMER): string {
+export function scene(s: Sky, now: number, hour: number, out: Outside = CLEAR_SUMMER, ev: SessionEvents = NO_EVENTS): string {
   const look = lookAt(hour)
   // an overcast day is dimmer on the ground too
   const ground = out.snowCover ? GROUND_SNOW : GROUNDS[out.season]
@@ -340,9 +513,13 @@ export function scene(s: Sky, now: number, hour: number, out: Outside = CLEAR_SU
     .sort((a, b) => b.t - a.t)
     .slice(0, MAX_BOLTS)
   // rain waits until the clouds are most of the way in (about 4 s of their 6 s roll)
+  // a long turn's storm grows: after two minutes heavier rain, after five the sky darker still
+  const heavy = stormy && stormAge > 120_000
   const rain = s.mode === 'working'
-    ? `<g style="animation:rain-in 6s steps(1) -${stormAge}ms both"><path class="rain" stroke="#a9c6ff" stroke-opacity=".5" d="${RAIN}"/></g>`
+    ? `<g style="animation:rain-in 6s steps(1) -${stormAge}ms both"><path class="rain" stroke="#a9c6ff" stroke-opacity=".5" d="${RAIN}"/>` +
+      (heavy ? `<g transform="translate(5 7)"><path class="rain" stroke="#a9c6ff" stroke-opacity=".45" d="${RAIN}"/></g>` : '') + `</g>`
     : ''
+  const darker = stormy && stormAge > 300_000 ? `<rect y="-1" width="320" height="182" fill="#06071a" fill-opacity=".15"/>` : ''
   const beams = s.mode === 'done'
     ? `<g class="beams" style="animation-delay:-${modeAge}ms" fill="#fff4c2">` +
       `<path d="M80 0h27L40 160H7z"/><path d="M127 0h15L87 160H63z"/><path d="M167 0h9L143 160H127z"/></g>`
@@ -358,6 +535,7 @@ ${glide('br', 'X', 100)}
 ${glide('bt', 'Y', -60)}
 ${TOWN_CSS}
 ${OUTSIDE_CSS}
+${EVENTS_CSS}
 @keyframes dim-in{from{opacity:0}to{opacity:1}}
 @keyframes dim-out{from{opacity:1}to{opacity:0}}
 .rain{animation:rain 1.5s steps(3) -${now % 1500}ms infinite}
@@ -373,10 +551,10 @@ ${OUTSIDE_CSS}
 @keyframes beams{0%{opacity:0}15%{opacity:.22}70%{opacity:.18}100%{opacity:0}}
 </style><svg viewBox="0 -.5 320 180" preserveAspectRatio="xMidYMax slice">
 ${sky(look, out)}
-${outside(out, look, now, s.mode === 'working')}${rain}${banks}
+${outside(out, look, now, s.mode === 'working')}${kites(ev, now, look)}${fireworks(ev, now)}${rain}${banks}${darker}
 ${beams}${bolts}
 <g style="filter:brightness(${(look.bright * dull).toFixed(2)}) saturate(${(look.sat * dull).toFixed(2)}) sepia(${look.warm.toFixed(2)})">${ground}</g>
-${lantern}${town(look, now, s.mode === 'waiting')}${out.cond === 'fog' ? fog(look) : ''}
+${lantern}${town(look, now, s.mode === 'waiting')}${out.cond === 'fog' ? fog(look) : ''}${holiday(out.holiday, look, now)}${compactFog(ev, now, look)}
 </svg></svg>`
 
   // newest bolts first; a crowded burst drops its oldest so the scene stays under the app's limit

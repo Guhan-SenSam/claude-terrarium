@@ -22,6 +22,23 @@ moon cross the sky, stars come out, and after dark the town's windows, streetlam
 glow. By day birds cross the sky; at night fireflies blink in the meadow; chimneys smoke, the
 windmill turns and the pond glints all the time.
 
+## The session in the weather
+
+- **A failed tool call** strikes red.
+- **Subagents** each fly a kite over the town while they work; it comes down when they finish.
+- **A git commit or push** sets off a firework over the church.
+- **Compacting the conversation** rolls fog through the valley until it is done.
+- **A long turn** grows the storm: heavier rain after two minutes, a darker sky after five.
+
+`/weather-demo` shows them all in about 20 seconds.
+
+## Sun, moon and holidays
+
+With a town set, dawn and dusk land on its real sunrise and sunset each day. The moon shows its
+real phase, worked out locally. The town decorates itself: pumpkins on the doorsteps through late
+October, string lights on the eaves and a tree by the path in December, fireworks after dark on New
+Year's Eve and the Fourth of July (with bunting by day). `/weather-holiday <name>` previews one.
+
 ## Seasons and real weather
 
 The valley follows the seasons: blossom in spring, golden wheat in summer, orange trees and fallen
@@ -43,6 +60,8 @@ turns it off.
 | `/weather-season <season>` | Preview `spring`, `summer`, `autumn`, `winter` or `snow`; `auto` follows the calendar |
 | `/weather-now` | Say what the background shows and why |
 | `/weather-tour` | A 40-second slideshow of the seasons and skies |
+| `/weather-holiday <name>` | Preview `halloween`, `christmas`, `newyear` or `july4`; `none` or `auto` |
+| `/weather-demo` | Show the session events: kites, a firework, a red strike, fog |
 | `/weather-cycle [seconds]` | Play a whole day in under a minute (default 48 s) |
 | `/weather-time HH:MM` | Show the sky at a time of day; `/weather-time auto` follows the clock again |
 | `/weather-test` | Fire a burst of test lightning |

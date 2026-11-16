@@ -1,7 +1,7 @@
 import { expect, mock, test } from 'claude-code/testing'
 import type { On } from 'claude-code'
 
-import { condOf, seasonOf } from '../hooks/outside'
+import { condOf, holidayOf, moonPhase, seasonOf, solarHour } from '../hooks/outside'
 import { scene } from '../hooks/scene'
 import type { Sky } from '../types'
 
@@ -113,4 +113,47 @@ test('on desktop the working row is a pixel storm cloud, the step and the time; 
   const terminal = await $.ui.mount({ plugin: 'thinking-weather', component: 'Spinner', props, surface: 'terminal' })
   expect(await terminal.find({ type: 'Svg' })).toBeUndefined()
   await terminal.unmount()
+})
+
+test('dawn and dusk land on the real sunrise and sunset', async () => {
+  // Tampa in November: up at 7:02, down at 17:40
+  expect(Math.abs(solarHour(7.03, 7.03, 17.67) - 6.4) < 1e-9).toBe(true)
+  expect(Math.abs(solarHour(17.67, 7.03, 17.67) - 18.7) < 1e-9).toBe(true)
+  expect(solarHour(12, undefined, undefined)).toBe(12)
+})
+
+test('the moon has its real phase', async () => {
+  expect(moonPhase(new Date(Date.UTC(2000, 0, 6, 18, 14))) < 1e-9).toBe(true)
+  // a full moon: 2026-01-03
+  expect(Math.abs(moonPhase(new Date(Date.UTC(2026, 0, 3, 10))) - 0.5)).toBeLessThan(0.03)
+})
+
+test('holidays follow the calendar', async () => {
+  expect(holidayOf(new Date(2026, 9, 31, 20))).toBe('halloween')
+  expect(holidayOf(new Date(2026, 11, 20, 12))).toBe('christmas')
+  expect(holidayOf(new Date(2026, 11, 31, 22))).toBe('newyear')
+  expect(holidayOf(new Date(2026, 6, 4, 21))).toBe('july4')
+  expect(holidayOf(new Date(2026, 4, 10, 12))).toBeUndefined()
+})
+
+test('a subagent flies a kite until it finishes', async ($, on) => {
+  engine(on)
+  const view = await $.ui.mount(BACKDROP)
+  const svg = async () => String((await view.find({ type: 'Svg' }))?.props.source ?? '')
+
+  await $.turn.start({ turnId: 't1' })
+  await $.turn.start({ turnId: 'a1', agentId: 'helper' })
+  expect((await svg()).includes('class="kite-in"')).toBe(true)
+  await $.turn.complete({ turnId: 'a1', agentId: 'helper', reason: 'completed' })
+  expect((await svg()).includes('class="kite-in"')).toBe(false)
+})
+
+test('holiday decorations stay under the size limit on a stormy night', async () => {
+  const strikes = Array.from({ length: 12 }, (_, i) => ({ t: AT - i * 40, seed: i + 1, err: i % 3 === 0 }))
+  for (const holiday of ['halloween', 'christmas', 'newyear', 'july4'] as const) {
+    const s: Sky = { mode: 'working', modeSince: AT - 400_000, stormSince: AT - 400_000, strikes, at: AT }
+    const ev = { fogUntil: AT + 1000, kites: [1, 2, 3, 4, 5, 6].map(i => ({ id: `k${i}`, since: AT - i * 1000 })), fireworks: [{ t: AT - 500, seed: 2 }] }
+    const svg = scene(s, AT, 22, { cond: 'snow', season: 'winter', snowCover: true, moon: 0.5, holiday }, ev)
+    expect(svg.length < LIMIT).toBe(true)
+  }
 })

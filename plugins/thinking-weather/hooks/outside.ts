@@ -1,6 +1,6 @@
 import type { EngineInterface } from 'claude-code'
 
-import type { Cond, Report, Season } from '../types'
+import type { Cond, Holiday, Report, Season } from '../types'
 
 // The real weather, from Open-Meteo (free, no key). The town is looked up once by name; after
 // that only its coordinates, rounded to a tenth of a degree (about 10 km), are sent.
@@ -27,7 +27,7 @@ export function condOf(code: number): Cond {
 }
 
 type Geo = { results?: { name: string; latitude: number; longitude: number; admin1?: string; country?: string; country_code?: string }[] }
-type Now = { current?: { weather_code: number; temperature_2m: number; snow_depth?: number } }
+type Now = { current?: { weather_code: number; temperature_2m: number; snow_depth?: number }; daily?: { sunrise?: string[]; sunset?: string[] } }
 
 /**
  * The weather at `place` now. `prev`, an earlier report for the same place, saves the lookup.
@@ -52,9 +52,10 @@ export async function fetchReport($: EngineInterface, place: string, prev: Repor
       lat = Math.round(pick.latitude * 10) / 10
       lon = Math.round(pick.longitude * 10) / 10
     }
-    const res = await $.http.fetch(`${FORECAST}?latitude=${lat}&longitude=${lon}&current=weather_code,temperature_2m,snow_depth`)
+    const res = await $.http.fetch(`${FORECAST}?latitude=${lat}&longitude=${lon}&current=weather_code,temperature_2m,snow_depth&daily=sunrise,sunset&forecast_days=1&timezone=auto`)
     if (!res.ok) return `Could not get the weather (HTTP ${res.status}).`
-    const cur = (JSON.parse(res.text) as Now).current
+    const body = JSON.parse(res.text) as Now
+    const cur = body.current
     if (cur === undefined) return 'The weather service answered with no current conditions.'
     return {
       place, name, lat, lon,
@@ -62,8 +63,47 @@ export async function fetchReport($: EngineInterface, place: string, prev: Repor
       tempC: cur.temperature_2m,
       snowCover: (cur.snow_depth ?? 0) > 0.01,
       at: await $.clock.now(),
+      sunrise: clockHour(body.daily?.sunrise?.[0]),
+      sunset: clockHour(body.daily?.sunset?.[0]),
     }
   } catch (error) {
     return `Could not reach the weather service: ${error instanceof Error ? error.message : String(error)}`
   }
+}
+
+/** "2026-11-16T07:03", local to the place, as an hour of the day (7.05). */
+function clockHour(iso: string | undefined): number | undefined {
+  const m = iso === undefined ? null : /T(\d{2}):(\d{2})/.exec(iso)
+  return m ? Number(m[1]) + Number(m[2]) / 60 : undefined
+}
+
+// The scene's looks are drawn for a sunrise at 6:24 and a sunset at 18:42. With the real times,
+// the clock is stretched piecewise so dawn and dusk land when they really do.
+const DRAWN_RISE = 6.4
+const DRAWN_SET = 18.7
+
+export function solarHour(h: number, rise: number | undefined, set: number | undefined): number {
+  if (rise === undefined || set === undefined || !(rise > 0 && set > rise && set < 24)) return h
+  if (h < rise) return (h / rise) * DRAWN_RISE
+  if (h < set) return DRAWN_RISE + ((h - rise) / (set - rise)) * (DRAWN_SET - DRAWN_RISE)
+  return DRAWN_SET + ((h - set) / (24 - set)) * (24 - DRAWN_SET)
+}
+
+/** The moon's age through its month, 0 new, 0.5 full, from a known new moon. */
+export function moonPhase(d: Date): number {
+  const SYNODIC = 29.530588853
+  const days = (d.getTime() - Date.UTC(2000, 0, 6, 18, 14)) / 86_400_000
+  return (((days / SYNODIC) % 1) + 1) % 1
+}
+
+/** The holiday the town is decorated for on this date, if any (local time). */
+export function holidayOf(d: Date): Holiday | undefined {
+  const m = d.getMonth() + 1
+  const day = d.getDate()
+  const h = d.getHours()
+  if ((m === 12 && day === 31 && h >= 18) || (m === 1 && day === 1)) return 'newyear'
+  if (m === 12) return 'christmas'
+  if (m === 10 && day >= 15) return 'halloween'
+  if (m === 7 && day === 4) return 'july4'
+  return undefined
 }

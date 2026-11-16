@@ -1,10 +1,10 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, PluginOptions, Register, ThemeSetArgs } from 'claude-code'
 
-import type { Cond, Mode, Outside, Report, Season, Sky, Strike } from '../types'
-import { scene } from './scene'
+import type { Cond, Holiday, Mode, Outside, Report, Season, SessionEvents, Sky, Strike } from '../types'
+import { FIREWORK_MS, NO_EVENTS, scene } from './scene'
 import { ICON_PX, spinnerSvg } from './spinner'
-import { fetchReport, seasonOf } from './outside'
+import { fetchReport, holidayOf, moonPhase, seasonOf, solarHour } from './outside'
 
 const INITIAL: Sky = { mode: 'idle', modeSince: 0, stormSince: 0, strikes: [], at: 0 }
 const sky = atom({ plugin: 'thinking-weather', key: 'sky' } as const, INITIAL)
@@ -13,6 +13,9 @@ const report = atom({ plugin: 'thinking-weather', key: 'report' } as const, null
 // elapsed time without redrawing the background.
 const tick = atom({ plugin: 'thinking-weather', key: 'tick' } as const, 0)
 let tickTimer: { cancel: () => void } | undefined
+const events = atom({ plugin: 'thinking-weather', key: 'events' } as const, NO_EVENTS)
+const COMPACT_FOG_MS = 60_000
+const GIT_SHIP = /\bgit\b[^|;&]*\b(commit|push)\b/
 
 const LOOK: ThemeSetArgs = {
   backdrop: { scene: 'weather', glass: { blur: 6, opacity: 0.5 } },
@@ -33,6 +36,8 @@ const WEATHER_MS = 30 * 60 * 1000
 // Previews from /weather-sky and /weather-season; undefined follows the weather and the calendar.
 let skyOverride: Cond | undefined
 let seasonOverride: Season | 'snow' | undefined
+let holidayOverride: Holiday | 'none' | undefined
+const HOLIDAYS: readonly Holiday[] = ['halloween', 'christmas', 'newyear', 'july4']
 let place = ''
 
 const CONDS: readonly Cond[] = ['clear', 'partly', 'overcast', 'rain', 'snow', 'fog', 'thunder']
@@ -42,11 +47,13 @@ const SEASONS = ['spring', 'summer', 'autumn', 'winter', 'snow'] as const
 function outsideAt(ms: number, r: Report | null): Outside {
   const fresh = r !== null && r.place === place && ms - r.at < 3 * 60 * 60 * 1000 ? r : null
   const cond = skyOverride ?? fresh?.cond ?? 'clear'
-  if (seasonOverride === 'snow') return { cond, season: 'winter', snowCover: true }
+  const moon = moonPhase(new Date(ms))
+  const holiday = holidayOverride === 'none' ? undefined : holidayOverride ?? holidayOf(new Date(ms))
+  if (seasonOverride === 'snow') return { cond, season: 'winter', snowCover: true, moon, holiday }
   const season = seasonOverride ?? seasonOf(new Date(ms), fresh?.lat ?? r?.lat ?? 40)
   // With no place set, winter is the storybook kind; with one, snow lies only when it really does.
   const snowCover = seasonOverride === undefined && (fresh ? fresh.snowCover : place === '' && season === 'winter')
-  return { cond, season, snowCover: snowCover || cond === 'snow' }
+  return { cond, season, snowCover: snowCover || cond === 'snow', moon, holiday }
 }
 
 async function refreshWeather($: EngineInterface): Promise<string> {
@@ -198,6 +205,31 @@ async function preview($: EngineInterface, skyArg: string | undefined, seasonArg
   return `Showing ${o.cond}, ${o.snowCover ? 'snow on the ground' : o.season}.`
 }
 
+/** Changes the session's events and redraws; `later` asks for another redraw after that long. */
+async function event($: EngineInterface, fn: (ev: SessionEvents, now: number) => SessionEvents, later?: number) {
+  const now = await $.clock.now()
+  await update($, events, prev => fn(prev ?? NO_EVENTS, now))
+  await write($)
+  if (later !== undefined) $.clock.after(later, () => void write($))
+}
+
+async function firework($: EngineInterface) {
+  await event($, (ev, now) => ({ ...ev, fireworks: [...ev.fireworks.filter(f => now - f.t < FIREWORK_MS), { t: now, seed: seed++ }] }), FIREWORK_MS + 200)
+}
+
+async function demo($: EngineInterface): Promise<string> {
+  const ids = ['demo-1', 'demo-2', 'demo-3']
+  await event($, (ev, now) => ({ ...ev, kites: [...ev.kites, ...ids.map((id, i) => ({ id, since: now + i * 1500 }))] }))
+  $.clock.after(3000, () => void firework($))
+  $.clock.after(5000, async () => {
+    pending.push({ t: await $.clock.now(), seed: seed++, err: true })
+    flushSoon($)
+  })
+  $.clock.after(7000, () => void event($, (ev, now) => ({ ...ev, fogUntil: now + 8000 }), 8000 + 4200))
+  $.clock.after(22000, () => void event($, ev => ({ ...ev, kites: ev.kites.filter(k => !ids.includes(k.id)) })))
+  return 'Demo: three kites go up for subagents, a firework for a commit, a red strike for a failed tool call, then fog rolls through for a compaction. About 22 seconds.'
+}
+
 export const register: Register = (on, options: PluginOptions) => {
   place = typeof options.place === 'string' ? options.place.trim() : ''
 
@@ -207,6 +239,8 @@ export const register: Register = (on, options: PluginOptions) => {
     await $.command.register({ name: 'weather-sky', description: 'Preview a sky: clear, partly, overcast, rain, snow, fog, thunder, or auto', argumentHint: CONDS.join(' | ') + ' | auto' })
     await $.command.register({ name: 'weather-season', description: 'Preview a season: spring, summer, autumn, winter, snow, or auto', argumentHint: SEASONS.join(' | ') + ' | auto' })
     await $.command.register({ name: 'weather-now', description: 'Say what the background is showing and why' })
+    await $.command.register({ name: 'weather-holiday', description: 'Preview a holiday: halloween, christmas, newyear, july4, none, or auto', argumentHint: 'halloween | christmas | newyear | july4 | none | auto' })
+    await $.command.register({ name: 'weather-demo', description: 'Show the session events: kites, a firework, a red strike, fog' })
     await $.command.register({ name: 'weather-tour', description: 'A slideshow of the seasons and skies, about 40 seconds' })
     await $.tool.register({
       name: 'weather_preview',
@@ -216,6 +250,8 @@ export const register: Register = (on, options: PluginOptions) => {
         properties: {
           sky: { type: 'string', enum: [...CONDS, 'auto'] },
           season: { type: 'string', enum: [...SEASONS, 'auto'] },
+          holiday: { type: 'string', enum: [...HOLIDAYS, 'none', 'auto'] },
+          hour: { type: 'number', description: 'Show this hour of the day (0-24); omit to follow the clock' },
         },
       },
       isDeferred: false,
@@ -244,7 +280,12 @@ export const register: Register = (on, options: PluginOptions) => {
   })
 
   on('turn.start', async ($, e, next) => {
-    if (e.agentId !== undefined) return next(e)
+    // a subagent at work flies a kite over the town
+    const agent = e.agentId
+    if (agent !== undefined) {
+      await event($, (ev, now) => (ev.kites.some(k => k.id === agent) ? ev : { ...ev, kites: [...ev.kites, { id: agent, since: now }] }))
+      return next(e)
+    }
     await write($, 'working')
     tickTimer?.cancel()
     tickTimer = $.clock.every(1000, () => void $.clock.now().then(now => update($, tick, () => now)))
@@ -282,13 +323,24 @@ export const register: Register = (on, options: PluginOptions) => {
       flushSoon($)
     }
     const result = await next(e)
+    const failed = 'isError' in result && result.isError === true
+    if (failed) {
+      pending.push({ t: await $.clock.now(), seed: seed++, err: true })
+      flushSoon($)
+    } else if (e.tool === 'Bash' && GIT_SHIP.test(String((e as { command?: unknown }).command ?? ''))) {
+      await firework($)
+    }
     const s = await read($, sky)
     if (s.mode === 'waiting') await write($, 'working')
     return result
   })
 
   on('turn.complete', async ($, e, next) => {
-    if (e.agentId !== undefined) return next(e)
+    const agent = e.agentId
+    if (agent !== undefined) {
+      await event($, ev => ({ ...ev, kites: ev.kites.filter(k => k.id !== agent) }))
+      return next(e)
+    }
     tickTimer?.cancel()
     tickTimer = undefined
     await write($, 'done')
@@ -298,6 +350,25 @@ export const register: Register = (on, options: PluginOptions) => {
     })
     return next(e)
   })
+
+  // compacting the conversation rolls fog through the valley, lifting once it is done
+  on('session.compact', async ($, e, next) => {
+    await event($, (ev, now) => ({ ...ev, fogUntil: now + COMPACT_FOG_MS }))
+    const done = await next(e)
+    await event($, (ev, now) => ({ ...ev, fogUntil: now + 2000 }), 2000 + 4200)
+    return done
+  })
+
+  on('command.run', { command: 'weather-holiday' }, async ($, e, next) => {
+    const arg = e.args.trim()
+    if (arg === '' || arg === 'auto') holidayOverride = undefined
+    else if (arg === 'none' || (HOLIDAYS as readonly string[]).includes(arg)) holidayOverride = arg as Holiday | 'none'
+    else return { text: `Holidays: ${HOLIDAYS.join(', ')}, none, or auto.` }
+    await write($)
+    return { text: holidayOverride === undefined ? 'Holidays follow the calendar again.' : `Decorated for ${holidayOverride}. /weather-holiday auto follows the calendar.` }
+  })
+
+  on('command.run', { command: 'weather-demo' }, async ($, e, next) => ({ text: await demo($) }))
 
   on('command.run', { command: 'weather-test' }, async ($, e, next) => {
     await write($, 'working')
@@ -330,7 +401,9 @@ export const register: Register = (on, options: PluginOptions) => {
   on('command.run', { command: 'weather-season' }, async ($, e, next) => ({ text: await preview($, undefined, e.args.trim()) }))
 
   on('tool.call', { tool: 'mcp__thinking-weather__weather_preview' }, async ($, e, next) => {
-    const args = e as { sky?: unknown; season?: unknown }
+    const args = e as { sky?: unknown; season?: unknown; holiday?: unknown; hour?: unknown }
+    if (args.holiday !== undefined) holidayOverride = args.holiday === 'auto' ? undefined : (String(args.holiday) as Holiday | 'none')
+    if (typeof args.hour === 'number' && args.hour >= 0 && args.hour < 24) hourOverride = args.hour
     return { result: await preview($, args.sky === undefined ? undefined : String(args.sky), args.season === undefined ? undefined : String(args.season)) }
   })
 
@@ -393,6 +466,12 @@ export const register: Register = (on, options: PluginOptions) => {
     const r = await read($, report)
     // the report's age and the season are judged on the engine's clock, as the state was written
     const outside = outsideAt(stored.at > 0 ? stored.at : Date.now(), r)
-    return <Svg source={scene(s, Date.now(), hourAt(Date.now()), outside)} alt="A pixel-art sky over fields that turns stormy while Claude works" isInteractive />
+    // on the real clock, dawn and dusk land at the place's real sunrise and sunset
+    // (not `h`: that name is the JSX factory)
+    const clockHour = hourAt(Date.now())
+    const previewing = cycle !== undefined || tour !== undefined || hourOverride !== undefined
+    const shownHour = previewing ? clockHour : solarHour(clockHour, r?.sunrise, r?.sunset)
+    const ev = await read($, events)
+    return <Svg source={scene(s, Date.now(), shownHour, outside, ev)} alt="A pixel-art sky over fields that turns stormy while Claude works" isInteractive />
   })
 }

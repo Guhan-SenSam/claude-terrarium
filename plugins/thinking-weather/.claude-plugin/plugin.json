@@ -1,6 +1,6 @@
 {
   "name": "thinking-weather",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "A pixel-art valley behind the conversation whose weather follows Claude: storm clouds and rain while it works, lightning on every tool call, a lantern while it waits on you, a day/night cycle, the seasons, and your town's real weather",
   "author": {
     "name": "Guhan Sensam"
