@@ -24,6 +24,7 @@ windmill turns and the pond glints all the time.
 
 ## The session in the weather
 
+- **A slash command you run** strikes lightning too, even between turns.
 - **A failed tool call** strikes red.
 - **Subagents** each fly a kite over the town while they work; it comes down when they finish.
 - **A git commit or push** sets off a firework over the church.

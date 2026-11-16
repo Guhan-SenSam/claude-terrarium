@@ -233,6 +233,13 @@ async function demo($: EngineInterface): Promise<string> {
 export const register: Register = (on, options: PluginOptions) => {
   place = typeof options.place === 'string' ? options.place.trim() : ''
 
+  // every slash command you run strikes lightning, like a tool call does
+  on('command.run', async ($, e, next) => {
+    pending.push({ t: await $.clock.now(), seed: seed++ })
+    flushSoon($)
+    return next(e)
+  })
+
   on('session.start', async ($, e, next) => {
     await $.theme.set(LOOK)
     await $.command.register({ name: 'weather-place', description: 'Set the town whose real weather the sky follows, or "off"', argumentHint: 'town | off' })
@@ -361,7 +368,11 @@ export const register: Register = (on, options: PluginOptions) => {
 
   on('command.run', { command: 'weather-holiday' }, async ($, e, next) => {
     const arg = e.args.trim()
-    if (arg === '' || arg === 'auto') holidayOverride = undefined
+    if (arg === '') {
+      const shown = outsideAt(await $.clock.now(), await read($, report)).holiday
+      return { text: `${shown === undefined ? 'No holiday decorations' : `Decorated for ${shown}`}${holidayOverride === undefined ? ', from the calendar' : ' (preview)'}. /weather-holiday <${HOLIDAYS.join(' | ')} | none | auto>` }
+    }
+    if (arg === 'auto') holidayOverride = undefined
     else if (arg === 'none' || (HOLIDAYS as readonly string[]).includes(arg)) holidayOverride = arg as Holiday | 'none'
     else return { text: `Holidays: ${HOLIDAYS.join(', ')}, none, or auto.` }
     await write($)

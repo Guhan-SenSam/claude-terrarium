@@ -17,8 +17,8 @@ const BACKDROP = {
 } as const
 
 /** Stands for the engine beneath the mod. */
-function engine(on: On) {
-  const clock = mock.clock(on, { now: AT })
+function engine(on: On, now = AT) {
+  const clock = mock.clock(on, { now })
   on('command.register', (_, e) => ({ value: { command: e.name } }))
   on('tool.register', (_, e) => ({ value: { tool: `mcp__thinking-weather__${e.name}` } }))
   on('theme.set', () => ({ value: { isDrawn: true, requestId: 'backdrop' } }))
@@ -156,4 +156,15 @@ test('holiday decorations stay under the size limit on a stormy night', async ()
     const svg = scene(s, AT, 22, { cond: 'snow', season: 'winter', snowCover: true, moon: 0.5, holiday }, ev)
     expect(svg.length < LIMIT).toBe(true)
   }
+})
+
+test('running a slash command strikes lightning', async ($, on) => {
+  // the backdrop times bolts on the real clock, so this test's clock starts there too
+  const clock = engine(on, Date.now())
+  on('command.run', () => ({ text: 'ran' }))
+  const view = await $.ui.mount(BACKDROP)
+  await $.command.run({ command: 'compact', args: '' })
+  await clock.advance(400)
+  const svg = String((await view.find({ type: 'Svg' }))?.props.source ?? '')
+  expect(svg.includes('class="bolt"')).toBe(true)
 })
