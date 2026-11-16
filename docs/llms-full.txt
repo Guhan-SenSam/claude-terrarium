@@ -37,7 +37,7 @@ What it shows:
 | A failed tool call | A red strike |
 | Waiting on the person (AskUserQuestion, ExitPlanMode) | Rain stops, the lantern blinks |
 | Turn finished | Clouds roll out, sunbeams |
-| A subagent at work | A kite over the town until it finishes |
+| A subagent at work | Something flying at the side of the sky until it finishes: a leaf kite, a diamond kite, a hot-air balloon, a drone or a hover probe, by era |
 | `git commit` or `git push` | A firework |
 | Compaction | Fog rolls through |
 | A long turn | Heavier rain after 2 minutes, darker after 5 |

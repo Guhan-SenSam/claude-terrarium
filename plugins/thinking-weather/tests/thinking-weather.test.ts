@@ -244,3 +244,17 @@ test('a burst of commands strikes one bolt each, one after another', async ($, o
   expect(new Set(delays).size).toBe(5) // each its own moment, not one flash
   expect(svg.includes('steps(1) forwards')).toBe(true) // the ones still waiting stay dark
 })
+
+test('each era flies its own thing for a subagent, out at the sides', async () => {
+  const s: Sky = { mode: 'working', modeSince: AT - 9000, stormSince: AT - 9000, strikes: [], at: AT }
+  const ev = { fogUntil: 0, kites: [{ id: 'a', since: AT - 9000 }, { id: 'b', since: AT - 9000 }], fireworks: [] }
+  const flyers = (['stone', 'village', 'industrial', 'modern', 'scifi'] as const).map(era => {
+    const svg = scene(s, AT, 12, { cond: 'clear', season: 'summer', snowCover: false, era }, ev)
+    return svg.slice(svg.indexOf('class="kite-in"'), svg.lastIndexOf('class="kite-in"') + 400)
+  })
+  expect(new Set(flyers).size).toBe(5)
+  // the first flies on the left, the second on the right, both clear of the middle of the sky
+  const xs = [...flyers[1]!.matchAll(/class="bob"[^>]*><path stroke="[^"]+" d="M(\d+)/g)].map(m => Number(m[1]))
+  expect(xs.length).toBe(2)
+  expect(xs[0]! < 80 && xs[1]! > 240).toBe(true)
+})

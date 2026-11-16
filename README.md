@@ -24,7 +24,7 @@ The background tells you what the session is doing without reading a word of it.
 | | |
 |---|---|
 | ![Storm clouds in the corners, rain and lightning over the village, kites flying](docs/images/claude-working.png) | ![A violet ion storm with neon lightning over the sci-fi city at night](docs/images/ion-storm.png) |
-| **Claude working:** storm clouds glide in, rain falls once they arrive, and every tool call or slash command strikes lightning. A failed call strikes red; each subagent flies a kite. | **The future's storm:** in the sci-fi era the storm is an ion storm, with violet clouds and neon lightning. |
+| **Claude working:** storm clouds glide in, rain falls once they arrive, and every tool call or slash command strikes lightning. A failed call strikes red; each subagent flies a kite at the side of the sky (a balloon, a drone or a probe in later eras). | **The future's storm:** in the sci-fi era the storm is an ion storm, with violet clouds and neon lightning. |
 
 **Society follows the context.** A fresh conversation is a Stone Age settlement. Society moves
 up an era for each fifth of the context window, through a village, an industrial town and a

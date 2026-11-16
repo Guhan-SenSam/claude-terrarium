@@ -45,7 +45,7 @@ rolls fog in, and behind it society falls back to the Stone Age: the fog lifts o
 
 - **A slash command you run** strikes lightning too, even between turns.
 - **A failed tool call** strikes red.
-- **Subagents** each fly a kite over the town while they work; it comes down when they finish.
+- **Subagents** each send something up at the side of the sky while they work, and it comes down when they finish: a leaf kite in the Stone Age, a diamond kite in the village, a hot-air balloon in the industrial era, a drone in the modern city and a hover probe in the future.
 - **A git commit or push** sets off a firework over the church.
 - **Compacting the conversation** rolls fog through the valley until it is done.
 - **A long turn** grows the storm: heavier rain after two minutes, a darker sky after five.

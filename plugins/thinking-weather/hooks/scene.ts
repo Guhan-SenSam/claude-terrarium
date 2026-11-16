@@ -469,26 +469,90 @@ const FOG_IN_MS = 3000
 const FOG_OUT_MS = 4000
 export const FIREWORK_MS = 2500
 const KITE_COLOURS = ['#e05a4a', '#4aa2e3', '#ead27a', '#8cc36b', '#c78ae8']
+const LEAF_COLOURS = ['#7aa84a', '#a7b45a', '#5f9440', '#b89a4a', '#8fb862']
+const NEON_COLOURS = ['#7af0ff', '#c080ff', '#ff7ad8', '#8affc0', '#ffe07a']
+// out at the sides, under the corner clouds, where the chat column does not cover them;
+// a little in from the very edge, since a narrow window crops the sides
+const FLYER_SLOTS: readonly [number, number][] = [[34, 86], [286, 82], [56, 100], [264, 96], [22, 110], [298, 112]]
 
-// A kite per subagent at work, flying over the town on a long string; each rises as it starts.
-function kites(ev: SessionEvents, now: number, look: Look): string {
-  const dim = mixHex('#ffffff', '#5a6070', 1 - look.bright)
-  return ev.kites.slice(0, 6).map((k, i) => {
-    const x = 192 + i * 22
-    const y = 46 + (i % 3) * 14
+// rows of a pixel shape, centred on x: each width drawn from x - (w - 1) / 2
+const shape = (x: number, y: number, rows: number[]) =>
+  rows.map((w, j) => (w > 0 ? `M${x - (w - 1) / 2} ${y + j}h${w}` : '')).join('')
+
+// The string down to a hand on the ground, leaning toward the middle of the valley.
+function tether(x: number, y: number, side: number, dim: string): string {
+  const lean = side === 0 ? 10 : -10
+  return `<path stroke="${dim}" stroke-opacity=".45" d="${Array.from({ length: 18 }, (_, j) => `M${Math.round(x + (j * lean) / 18)} ${Math.round(y + (j * (150 - y)) / 18)}h1`).join('')}"/>`
+}
+
+// What each era flies for a subagent: a leaf kite, a diamond kite, a hot-air balloon, a drone,
+// a hover probe. Each returns the body (it bobs) and anything fixed below it (a string).
+function flyer(era: Drawn, x: number, y: number, i: number, side: number, dim: string): [string, string] {
+  if (era === 'stone') {
+    // a leaf kite on a vine, its midrib darker, a twist of grass for a tail
+    const c = LEAF_COLOURS[i % LEAF_COLOURS.length]!
+    const rib = mixHex(c, '#2a2a14', 0.45)
+    const body = `<path stroke="${c}" d="${shape(x, y, [1, 3, 5, 5, 5, 5, 3, 1])}"/>` +
+      `<path stroke="${rib}" d="M${x} ${y + 1}v7M${x - 1} ${y + 3}h1M${x + 1} ${y + 4}h1M${x - 1} ${y + 5}h1"/>` +
+      `<path stroke="#8a7a3a" stroke-opacity=".8" d="M${x} ${y + 8}h1M${x + 1} ${y + 9}h1M${x} ${y + 10}h1M${x + 1} ${y + 11}h1"/>`
+    return [body, tether(x, y + 8, side, dim)]
+  }
+  if (era === 'industrial') {
+    // a striped hot-air balloon with its basket on two ropes, free of any string
     const c = KITE_COLOURS[i % KITE_COLOURS.length]!
-    const shade = mixHex(c, '#1a1f2a', 0.35)
+    const rows = [5, 7, 9, 9, 9, 7, 5, 3]
+    let a = ''
+    let b = ''
+    rows.forEach((w, j) => {
+      for (let k = 0; k < w; k++) {
+        const px = x - (w - 1) / 2 + k
+        if (Math.floor((px - x + 5) / 2) % 2 === 0) a += `M${px} ${y + j}h1`
+        else b += `M${px} ${y + j}h1`
+      }
+    })
+    const body = `<path stroke="${c}" d="${a}"/><path stroke="#f2ead8" d="${b}"/>` +
+      `<path stroke="#5a4030" stroke-opacity=".8" d="M${x - 1} ${y + 8}h1M${x + 1} ${y + 8}h1M${x - 1} ${y + 9}h1M${x + 1} ${y + 9}h1"/>` +
+      `<path stroke="#8a5a32" d="M${x - 1} ${y + 10}h3M${x - 1} ${y + 11}h3"/>`
+    return [body, '']
+  }
+  if (era === 'modern') {
+    // a quadcopter: a dark body, arms, spinning rotors as a blur, and a status light
+    const c = KITE_COLOURS[i % KITE_COLOURS.length]!
+    const body = `<path stroke="#c8ced6" stroke-opacity=".55" d="M${x - 5} ${y}h3M${x + 3} ${y}h3"/>` +
+      `<path stroke="#6a707a" d="M${x - 4} ${y + 1}h9"/>` +
+      `<path stroke="#33373f" d="M${x - 1} ${y + 1}h3M${x - 1} ${y + 2}h3"/>` +
+      `<path stroke="${c}" d="M${x} ${y + 3}h1"/>`
+    return [body, '']
+  }
+  if (era === 'scifi') {
+    // a hover probe: a pale orb in a neon ring, a faint beam beneath
+    const c = NEON_COLOURS[i % NEON_COLOURS.length]!
+    const body = `<path stroke="${c}" stroke-opacity=".3" d="M${x} ${y + 5}v6M${x - 1} ${y + 6}v3M${x + 1} ${y + 6}v3"/>` +
+      `<path stroke="#e8f4ff" d="${shape(x, y, [3, 5, 5, 5, 3])}"/>` +
+      `<path stroke="${c}" d="M${x - 4} ${y + 2}h2M${x + 3} ${y + 2}h2M${x - 1} ${y + 2}h3"/>`
+    return [body, '']
+  }
+  // the village: a diamond kite, its right half in shade, with cross spars and a tail of bows
+  const c = KITE_COLOURS[i % KITE_COLOURS.length]!
+  const shade = mixHex(c, '#1a1f2a', 0.35)
+  const rows = [1, 3, 5, 7, 9, 7, 5, 3, 1]
+  const left = rows.map((w, j) => `M${x - (w - 1) / 2} ${y + j}h${(w + 1) / 2}`).join('')
+  const right = rows.map((w, j) => (w > 1 ? `M${x + 1} ${y + j}h${(w - 1) / 2}` : '')).join('')
+  const body = `<path stroke="${c}" d="${left}"/><path stroke="${shade}" d="${right}"/>` +
+    `<path stroke="#2a1f1a" stroke-opacity=".6" d="M${x - 4} ${y + 4}h9M${x} ${y + 1}v7"/>` +
+    `<path stroke="${dim}" stroke-opacity=".85" d="M${x} ${y + 9}h1M${x + 1} ${y + 10}h1M${x} ${y + 11}h1M${x - 1} ${y + 12}h1M${x} ${y + 13}h1"/>` +
+    `<path stroke="${c}" d="M${x - 1} ${y + 11}h1M${x + 2} ${y + 11}h1M${x - 2} ${y + 13}h1M${x + 1} ${y + 13}h1"/>`
+  return [body, tether(x, y + 9, side, dim)]
+}
+
+// A flyer per subagent at work, out at the sides of the sky; each rises as it starts.
+function kites(ev: SessionEvents, now: number, look: Look, era: Drawn = 'village'): string {
+  const dim = mixHex('#ffffff', '#5a6070', 1 - look.bright)
+  return ev.kites.slice(0, FLYER_SLOTS.length).map((k, i) => {
+    const [x, y] = FLYER_SLOTS[i]!
     const rise = Math.max(0, now - k.since)
-    // a diamond kite, its right half in shade, with cross spars and a tail of bows
-    const rows = [1, 3, 5, 7, 9, 7, 5, 3, 1]
-    const left = rows.map((w, j) => `M${x - (w - 1) / 2} ${y + j}h${(w + 1) / 2}`).join('')
-    const right = rows.map((w, j) => (w > 1 ? `M${x + 1} ${y + j}h${(w - 1) / 2}` : '')).join('')
-    const body = `<path stroke="${c}" d="${left}"/><path stroke="${shade}" d="${right}"/>` +
-      `<path stroke="#2a1f1a" stroke-opacity=".6" d="M${x - 4} ${y + 4}h9M${x} ${y + 1}v7"/>` +
-      `<path stroke="${dim}" stroke-opacity=".85" d="M${x} ${y + 9}h1M${x + 1} ${y + 10}h1M${x} ${y + 11}h1M${x - 1} ${y + 12}h1M${x} ${y + 13}h1"/>` +
-      `<path stroke="${c}" d="M${x - 1} ${y + 11}h1M${x + 2} ${y + 11}h1M${x - 2} ${y + 13}h1M${x + 1} ${y + 13}h1"/>`
-    const string = `<path stroke="${dim}" stroke-opacity=".45" d="${Array.from({ length: 18 }, (_, j) => `M${Math.round(x - (j * 10) / 18)} ${Math.round(y + 9 + (j * (150 - y - 9)) / 18)}h1`).join('')}"/>`
-    return `<g class="kite-in" style="animation-delay:${-rise}ms">${string}<g class="bob" style="animation-delay:${-((now + i * 500) % 2000)}ms">${body}</g></g>`
+    const [body, below] = flyer(era, x, y, i, i % 2, dim)
+    return `<g class="kite-in" style="animation-delay:${-rise}ms">${below}<g class="bob" style="animation-delay:${-((now + i * 500) % 2000)}ms">${body}</g></g>`
   }).join('')
 }
 
@@ -709,7 +773,7 @@ ${EVENTS_CSS}
 @keyframes beams{0%{opacity:0}15%{opacity:.22}70%{opacity:.18}100%{opacity:0}}
 </style><svg viewBox="0 -.5 320 180" preserveAspectRatio="xMidYMax slice">
 ${sky(look, out)}
-${outside(out, look, now, s.mode === 'working')}${kites(ev, now, look)}${fireworks(ev, now)}${rain}${banks}${darker}
+${outside(out, look, now, s.mode === 'working')}${kites(ev, now, look, era)}${fireworks(ev, now)}${rain}${banks}${darker}
 ${beams}${bolts}
 <g style="filter:brightness(${(look.bright * dull).toFixed(2)}) saturate(${(look.sat * dull).toFixed(2)}) sepia(${look.warm.toFixed(2)})">${ground}</g>
 ${lantern}${town(look, now, s.mode === 'waiting', era)}${out.cond === 'fog' ? fog(look) : ''}${holiday(out.holiday, look, now, era)}${shimmer(out, now)}${compactFog(ev, now, look)}
