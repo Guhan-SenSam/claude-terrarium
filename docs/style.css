@@ -1,0 +1,89 @@
+:root {
+  --bg: #0d1222;
+  --bg-2: #151d2e;
+  --card: #1a2338;
+  --line: #2a3550;
+  --text: #e3e8f2;
+  --muted: #a3aec4;
+  --meadow: #8cc36b;
+  --wheat: #ead27a;
+  --lantern: #ffb347;
+  --neon: #7fe8ff;
+  --violet: #b98cff;
+  --radius: 12px;
+  --pixel: 'Silkscreen', ui-monospace, monospace;
+  --body: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mono: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.65 var(--body);
+  -webkit-font-smoothing: antialiased;
+}
+img { max-width: 100%; height: auto; image-rendering: pixelated; border-radius: var(--radius); display: block; }
+a { color: var(--neon); text-underline-offset: 3px; }
+a:hover { color: #fff; }
+
+.wrap { max-width: 1040px; margin: 0 auto; padding: 0 20px; }
+
+/* top bar */
+.top { position: sticky; top: 0; z-index: 10; background: rgba(13, 18, 34, .92); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+.top .wrap { display: flex; align-items: center; gap: 18px; height: 56px; overflow-x: auto; white-space: nowrap; }
+.brand { font-family: var(--pixel); font-size: 15px; color: var(--text); text-decoration: none; margin-right: auto; display: flex; align-items: center; gap: 8px; }
+.brand::before { content: ''; width: 14px; height: 14px; background: var(--meadow); box-shadow: 4px 4px 0 var(--wheat); }
+.top nav a { color: var(--muted); text-decoration: none; font-size: 14px; }
+.top nav a:hover, .top nav a[aria-current] { color: var(--text); }
+.top nav { display: flex; gap: 16px; }
+
+/* hero */
+.hero { position: relative; }
+.hero img { border-radius: 0; width: 100%; max-height: 560px; object-fit: cover; }
+.hero .over { position: absolute; left: 0; right: 0; bottom: 0; padding: 40px 0 28px; background: linear-gradient(transparent, rgba(13, 18, 34, .92)); }
+h1, h2, h3 { font-family: var(--pixel); font-weight: 400; line-height: 1.25; letter-spacing: .3px; }
+h1 { font-size: clamp(26px, 5vw, 44px); margin: 0 0 10px; }
+h2 { font-size: 24px; margin: 56px 0 14px; }
+h3 { font-size: 17px; margin: 28px 0 8px; color: var(--wheat); }
+.lede { font-size: 18px; color: var(--muted); max-width: 720px; margin: 0; }
+.page-head { padding: 48px 0 8px; }
+
+/* cards */
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px; margin-top: 18px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; text-decoration: none; color: var(--text); display: flex; flex-direction: column; gap: 8px; }
+.card:hover { border-color: var(--neon); color: var(--text); }
+.card h3 { margin: 0; color: var(--text); }
+.card p { margin: 0; color: var(--muted); font-size: 15px; }
+.tag { font-family: var(--mono); font-size: 12px; color: var(--meadow); }
+
+/* galleries */
+.gallery { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin: 18px 0; }
+figure { margin: 0; }
+figcaption { color: var(--muted); font-size: 14px; margin-top: 6px; }
+.wide { margin: 20px 0; }
+
+/* text blocks */
+pre, code { font-family: var(--mono); font-size: 14px; }
+pre { background: var(--bg-2); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; overflow-x: auto; }
+:not(pre) > code { background: var(--bg-2); border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; }
+table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 15px; display: block; overflow-x: auto; }
+th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { color: var(--wheat); font-weight: 600; }
+.note { border-left: 3px solid var(--lantern); background: var(--bg-2); padding: 10px 14px; border-radius: 0 10px 10px 0; color: var(--muted); }
+ul { padding-left: 22px; }
+li { margin: 4px 0; }
+
+.steps { counter-reset: s; list-style: none; padding: 0; }
+.steps li { counter-increment: s; position: relative; padding-left: 40px; margin: 12px 0; }
+.steps li::before { content: counter(s); position: absolute; left: 0; top: 1px; width: 26px; height: 26px; background: var(--meadow); color: var(--bg); font-family: var(--pixel); font-size: 13px; display: grid; place-items: center; }
+
+footer { margin-top: 72px; border-top: 1px solid var(--line); padding: 26px 0 40px; color: var(--muted); font-size: 14px; }
+
+@media (max-width: 640px) {
+  body { font-size: 15px; }
+  .hero .over { position: static; background: none; padding: 20px 0 0; }
+  h2 { margin-top: 40px; }
+}

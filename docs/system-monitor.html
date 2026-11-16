@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>system-monitor · claude-mods</title>
+<meta name="description" content="Pixel-art CPU, RAM and GPU meters above the Claude Code prompt, lit for the time of day.">
+<link rel="alternate" type="text/plain" href="llms.txt" title="For AI agents">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Silkscreen&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<meta property="og:title" content="system-monitor · claude-mods">
+<meta property="og:description" content="Pixel-art CPU, RAM and GPU meters above the Claude Code prompt, lit for the time of day.">
+<meta property="og:image" content="images/hero.png">
+</head>
+<body>
+<header class="top"><div class="wrap">
+<a class="brand" href="index.html">claude-mods</a>
+<nav><a href="index.html">Home</a> <a href="thinking-weather.html">thinking-weather</a> <a href="system-monitor.html" aria-current="page">system-monitor</a> <a href="turn-receipt.html">turn-receipt</a> <a href="pins.html">pins</a> <a href="agents.html">For agents</a></nav>
+</div></header>
+
+<main class="wrap">
+<div class="page-head">
+<h1>system-monitor</h1>
+<p class="lede">Live CPU, RAM and GPU meters in a band above the prompt, for watching heavy jobs while Claude works.</p>
+</div>
+<img src="images/band.png" alt="Pixel-art CPU, RAM and GPU meters by day and at night" width="1240" height="250">
+<h2>What it shows</h2>
+<ul>
+<li>A pixel chip, memory stick and graphics card, each followed by a bar of chunky segments and its reading.</li>
+<li>Green under 70%, gold from 70%, lantern orange from 90%, with a stepped glow brighter as a reading climbs.</li>
+<li>Warmer at dawn and dusk, dimmer at night with an amber glow.</li>
+<li>A sleeping GPU (hybrid-graphics laptops) is left asleep, shown dimmed with a "z".</li>
+<li>On a narrow prompt the bars shrink, then go, keeping icons and numbers. The terminal shows text bars.</li>
+<li><code>/sysmon</code> opens a pane with threads and load average, memory and swap, VRAM and GPU temperature.</li>
+</ul>
+<p>Readings refresh every 2 seconds from <code>/proc</code> and <code>nvidia-smi</code>, all local. Linux only; the NVIDIA GPU is optional.</p>
+<h2 id="install">Install</h2>
+<p>In the <strong>desktop app</strong>: click <strong>+</strong> next to the prompt box, then <strong>Plugins</strong>, <strong>Add marketplace</strong> with <code>Guhan-SenSam/claude-mods</code>, then <strong>Add plugin</strong> and pick <code>system-monitor</code>.</p>
+<p>At a terminal prompt:</p>
+<pre>/plugin install system-monitor --marketplace Guhan-SenSam/claude-mods</pre>
+<p>From a shell:</p>
+<pre>claude plugin install system-monitor --marketplace Guhan-SenSam/claude-mods</pre>
+<p>Choose the user scope to load it in every session. Update with <code>claude plugin update system-monitor@claude-mods</code>, then restart or run <code>/reload-plugins</code>.</p>
+
+</main>
+<footer><div class="wrap">
+MIT licensed · <a href="https://github.com/Guhan-SenSam/claude-mods">Source on GitHub</a> ·
+<a href="llms.txt">llms.txt</a> · <a href="llms-full.txt">llms-full.txt</a> ·
+Pixel art drawn as vector runs after the method of <a href="https://github.com/winchxyz/backdropkit">BackdropKit</a>.
+</div></footer>
+</body>
+</html>

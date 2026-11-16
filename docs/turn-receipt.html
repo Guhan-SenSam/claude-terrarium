@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>turn-receipt · claude-mods</title>
+<meta name="description" content="A one-line receipt under each finished Claude Code reply.">
+<link rel="alternate" type="text/plain" href="llms.txt" title="For AI agents">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Silkscreen&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<meta property="og:title" content="turn-receipt · claude-mods">
+<meta property="og:description" content="A one-line receipt under each finished Claude Code reply.">
+<meta property="og:image" content="images/hero.png">
+</head>
+<body>
+<header class="top"><div class="wrap">
+<a class="brand" href="index.html">claude-mods</a>
+<nav><a href="index.html">Home</a> <a href="thinking-weather.html">thinking-weather</a> <a href="system-monitor.html">system-monitor</a> <a href="turn-receipt.html" aria-current="page">turn-receipt</a> <a href="pins.html">pins</a> <a href="agents.html">For agents</a></nav>
+</div></header>
+
+<main class="wrap">
+<div class="page-head">
+<h1>turn-receipt</h1>
+<p class="lede">A one-line receipt under each finished reply, so you can tell which turns did real work when you come back to a long session.</p>
+</div>
+<pre>4m 12s · 23 tool calls · 2 agents · edited register.tsx, sample.ts +4 · 3.2k tokens out</pre>
+<ul>
+<li><strong>Time:</strong> how long the turn took; a stopped turn reads <code>interrupted after 1m 3s</code>.</li>
+<li><strong>Tool calls</strong> and <strong>agents:</strong> every call in the turn, its subagents' included.</li>
+<li><strong>Files edited:</strong> the first two, then a count of the rest.</li>
+<li><strong>Tokens out:</strong> what the model wrote.</li>
+</ul>
+<p>Shown in the desktop app, the terminal and the phone app, and kept for the last 30 sessions.</p>
+<h2 id="install">Install</h2>
+<p>In the <strong>desktop app</strong>: click <strong>+</strong> next to the prompt box, then <strong>Plugins</strong>, <strong>Add marketplace</strong> with <code>Guhan-SenSam/claude-mods</code>, then <strong>Add plugin</strong> and pick <code>turn-receipt</code>.</p>
+<p>At a terminal prompt:</p>
+<pre>/plugin install turn-receipt --marketplace Guhan-SenSam/claude-mods</pre>
+<p>From a shell:</p>
+<pre>claude plugin install turn-receipt --marketplace Guhan-SenSam/claude-mods</pre>
+<p>Choose the user scope to load it in every session. Update with <code>claude plugin update turn-receipt@claude-mods</code>, then restart or run <code>/reload-plugins</code>.</p>
+
+</main>
+<footer><div class="wrap">
+MIT licensed · <a href="https://github.com/Guhan-SenSam/claude-mods">Source on GitHub</a> ·
+<a href="llms.txt">llms.txt</a> · <a href="llms-full.txt">llms-full.txt</a> ·
+Pixel art drawn as vector runs after the method of <a href="https://github.com/winchxyz/backdropkit">BackdropKit</a>.
+</div></footer>
+</body>
+</html>

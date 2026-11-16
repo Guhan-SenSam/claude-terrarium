@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>thinking-weather · claude-mods</title>
+<meta name="description" content="A pixel-art valley behind the Claude Code conversation that reacts to the session, the context, the clock, the seasons and the real weather.">
+<link rel="alternate" type="text/plain" href="llms.txt" title="For AI agents">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Silkscreen&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<meta property="og:title" content="thinking-weather · claude-mods">
+<meta property="og:description" content="A pixel-art valley behind the Claude Code conversation that reacts to the session, the context, the clock, the seasons and the real weather.">
+<meta property="og:image" content="images/hero.png">
+</head>
+<body>
+<header class="top"><div class="wrap">
+<a class="brand" href="index.html">claude-mods</a>
+<nav><a href="index.html">Home</a> <a href="thinking-weather.html" aria-current="page">thinking-weather</a> <a href="system-monitor.html">system-monitor</a> <a href="turn-receipt.html">turn-receipt</a> <a href="pins.html">pins</a> <a href="agents.html">For agents</a></nav>
+</div></header>
+
+<main class="wrap">
+<div class="page-head">
+<h1>thinking-weather</h1>
+<p class="lede">A pixel-art valley behind the conversation in the Claude Code desktop app. It tells you what the session is doing without reading a word of it.</p>
+</div>
+<img src="images/claude-working.png" alt="Storm clouds, rain, lightning and kites over the village" width="960" height="540">
+
+<h2>What it shows</h2>
+<table>
+<tr><th>When</th><th>The valley</th></tr>
+<tr><td>Claude idle</td><td>A clear sky, or your town's real weather.</td></tr>
+<tr><td>Claude working</td><td>Storm clouds glide in from the corners and top; rain falls once they arrive. The bottom working row becomes a little pixel storm cloud.</td></tr>
+<tr><td>Each tool call or slash command</td><td>A lightning strike. Strikes close together go out in one redraw.</td></tr>
+<tr><td>A failed tool call</td><td>A red strike.</td></tr>
+<tr><td>Waiting on you (a question or a plan)</td><td>The rain stops and the lantern by the road blinks.</td></tr>
+<tr><td>Turn finished</td><td>The clouds roll back out and sunbeams break through.</td></tr>
+<tr><td>A subagent at work</td><td>A kite over the town, down when it finishes.</td></tr>
+<tr><td>A <code>git commit</code> or <code>git push</code></td><td>A firework over the town.</td></tr>
+<tr><td>Compaction</td><td>Fog rolls through until it is done.</td></tr>
+<tr><td>A long turn</td><td>Heavier rain after two minutes, a darker sky after five.</td></tr>
+</table>
+
+<h2 id="eras">Society follows the context</h2>
+<p>The valley is a timeline. A fresh conversation is a Stone Age settlement; society moves up an era for each fifth of the context window; near a full context the valley is a sci-fi city. When the conversation is compacted, fog rolls in and society falls back to the Stone Age behind it.</p>
+<figure class="wide"><img src="images/eras.gif" alt="Stone Age, village, sci-fi city, fog, Stone Age" width="640" height="360"></figure>
+<table>
+<tr><th>Context</th><th>Era</th></tr>
+<tr><td>0-20%</td><td>Stone Age: thatched huts in a palisade, a campfire, standing stones, a mammoth.</td></tr>
+<tr><td>20-40%</td><td>Village: cottages, a church, a windmill, a farm.</td></tr>
+<tr><td>40-60%</td><td>Industrial (drawn as the village for now).</td></tr>
+<tr><td>60-80%</td><td>Modern (drawn as the village for now).</td></tr>
+<tr><td>80-100%</td><td>Sci-fi: spires and skybridges, a space elevator, hovercraft, a ringed planet, an aurora at night, and an ion storm in place of the rain clouds.</td></tr>
+</table>
+<div class="gallery">
+<figure><img src="images/stone-age.png" alt="Stone Age huts and a mammoth" width="960" height="540"><figcaption>Stone Age</figcaption></figure>
+<figure><img src="images/scifi-day.png" alt="The sci-fi city by day" width="960" height="540"><figcaption>Sci-fi, by day</figcaption></figure>
+<figure><img src="images/ion-storm.png" alt="A violet ion storm with neon lightning" width="960" height="540"><figcaption>Claude working in the sci-fi era: an ion storm</figcaption></figure>
+</div>
+
+<h2 id="outside">The world outside</h2>
+<p>The sky follows your local clock: dawn, day, dusk and a starry night, with the sun and moon crossing it. With a town set, dawn and dusk land on its real sunrise and sunset, and the moon shows its real phase.</p>
+<figure class="wide"><img src="images/day-cycle.gif" alt="A day in the valley, dawn to night" width="640" height="360"></figure>
+<p>The land follows the seasons: blossom in spring, golden wheat in summer, orange trees in autumn, a muted winter, and snow on roofs and trees only when there really is snow. Set a town and the idle sky follows its weather: clear, a few clouds, overcast, rain, snow, fog or thunder. The town decorates itself for Halloween, December, New Year's Eve and the Fourth of July.</p>
+<div class="gallery">
+<figure><img src="images/village-dusk.png" alt="The village at an autumn dusk" width="960" height="540"><figcaption>Autumn dusk</figcaption></figure>
+<figure><img src="images/christmas-snow.png" alt="Christmas lights in the snow" width="960" height="540"><figcaption>December, snowing</figcaption></figure>
+<figure><img src="images/halloween.png" alt="Pumpkins glowing at Halloween" width="960" height="540"><figcaption>Halloween night</figcaption></figure>
+</div>
+
+<h2 id="commands">Commands</h2>
+<table>
+<tr><th>Command</th><th>Does</th></tr>
+<tr><td><code>/weather-place &lt;town&gt;</code></td><td>Follow the real weather in a town (<code>Town, Region</code> picks between towns of one name); <code>off</code> stops.</td></tr>
+<tr><td><code>/weather-era &lt;era&gt;</code></td><td>Preview <code>stone</code>, <code>village</code>, <code>industrial</code>, <code>modern</code> or <code>scifi</code>; <code>auto</code> follows the context. Bare, it says where society stands.</td></tr>
+<tr><td><code>/weather-sky &lt;sky&gt;</code></td><td>Preview <code>clear</code>, <code>partly</code>, <code>overcast</code>, <code>rain</code>, <code>snow</code>, <code>fog</code>, <code>thunder</code>; <code>auto</code>.</td></tr>
+<tr><td><code>/weather-season &lt;season&gt;</code></td><td>Preview <code>spring</code>, <code>summer</code>, <code>autumn</code>, <code>winter</code>, <code>snow</code>; <code>auto</code>.</td></tr>
+<tr><td><code>/weather-holiday &lt;name&gt;</code></td><td>Preview <code>halloween</code>, <code>christmas</code>, <code>newyear</code>, <code>july4</code>; <code>none</code> or <code>auto</code>.</td></tr>
+<tr><td><code>/weather-time HH:MM</code></td><td>Show the sky at a time of day; <code>auto</code> follows the clock.</td></tr>
+<tr><td><code>/weather-cycle [seconds]</code></td><td>Play a whole day in under a minute.</td></tr>
+<tr><td><code>/weather-tour</code></td><td>A 40-second slideshow of seasons and skies.</td></tr>
+<tr><td><code>/weather-demo</code></td><td>Show the session events: kites, a firework, a red strike, fog.</td></tr>
+<tr><td><code>/weather-now</code></td><td>Say what the background shows and why.</td></tr>
+<tr><td><code>/weather-test</code></td><td>Fire a burst of test lightning.</td></tr>
+<tr><td><code>/weather-off</code></td><td>Clear the background for this session.</td></tr>
+</table>
+<p>Claude can use the same through three tools: <code>weather_preview</code> (sky, season, holiday, era, hour), <code>weather_place</code> and <code>weather_cycle</code>.</p>
+
+<h2 id="settings">Settings</h2>
+<p>One setting, <code>place</code>: the town whose weather the sky follows. Empty by default, which sends nothing anywhere. Set it with <code>/weather-place</code>, or from a shell:</p>
+<pre>echo '{"place":"Tampa, Florida"}' | claude plugin configure thinking-weather@claude-mods --values-stdin</pre>
+<p>which stores it in <code>~/.claude/settings.json</code>:</p>
+<pre>"pluginConfigs": {
+  "thinking-weather@claude-mods": { "options": { "place": "Tampa, Florida" } }
+}</pre>
+
+<h2 id="limits">Where it draws</h2>
+<ul>
+<li>The background and the storm-cloud working row draw in the desktop app. The terminal and editors draw no backgrounds, so there the mod does nothing visible.</li>
+<li>The live step row's spinning orb belongs to the app and stays.</li>
+<li>It makes no sound: mod audio does not play when Claude Code runs on Linux behind the desktop app.</li>
+</ul>
+
+<h2 id="how">How it is drawn</h2>
+<p>The desktop app strips embedded images from a background, so everything is vector pixel art on a 320x180 grid: one stroke-width-1 path per colour run, each colour reaching one cell under its lighter neighbours so no hairlines show at fractional window sizes. Every scene stays under the app's 131,072-character limit, and every animation steps on one shared half-second clock, so the background redraws at most twice a second.</p>
+<h2 id="install">Install</h2>
+<p>In the <strong>desktop app</strong>: click <strong>+</strong> next to the prompt box, then <strong>Plugins</strong>, <strong>Add marketplace</strong> with <code>Guhan-SenSam/claude-mods</code>, then <strong>Add plugin</strong> and pick <code>thinking-weather</code>.</p>
+<p>At a terminal prompt:</p>
+<pre>/plugin install thinking-weather --marketplace Guhan-SenSam/claude-mods</pre>
+<p>From a shell:</p>
+<pre>claude plugin install thinking-weather --marketplace Guhan-SenSam/claude-mods</pre>
+<p>Choose the user scope to load it in every session. Update with <code>claude plugin update thinking-weather@claude-mods</code>, then restart or run <code>/reload-plugins</code>.</p>
+
+</main>
+<footer><div class="wrap">
+MIT licensed · <a href="https://github.com/Guhan-SenSam/claude-mods">Source on GitHub</a> ·
+<a href="llms.txt">llms.txt</a> · <a href="llms-full.txt">llms-full.txt</a> ·
+Pixel art drawn as vector runs after the method of <a href="https://github.com/winchxyz/backdropkit">BackdropKit</a>.
+</div></footer>
+</body>
+</html>

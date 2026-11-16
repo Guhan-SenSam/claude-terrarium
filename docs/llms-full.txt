@@ -1,0 +1,105 @@
+# claude-mods: everything in one file
+
+> Mods for Claude Code from the marketplace Guhan-SenSam/claude-mods. Four mods, each installed alone: thinking-weather, system-monitor, turn-receipt, pins. Source: https://github.com/Guhan-SenSam/claude-mods. Docs: https://guhan-sensam.github.io/claude-mods/
+
+## Facts
+
+- Mods are Claude Code plugins with function hooks (TypeScript hooks modules). Built and tested on Claude Code 2.1.325.
+- Marketplace source: `Guhan-SenSam/claude-mods`. Once added it is named `claude-mods`, so plugin ids are `<mod>@claude-mods`.
+- Visual parts (thinking-weather's background and working row, system-monitor's pixel band) draw in the Claude Code desktop app. The terminal shows text parts only.
+- system-monitor reads Linux `/proc` (and `nvidia-smi` when present).
+- Nothing leaves the machine except thinking-weather's real weather, which is off until a town is set.
+- The mods make no sound.
+
+## Install
+
+    claude plugin install <mod> --marketplace Guhan-SenSam/claude-mods --scope user
+
+Mods: thinking-weather, system-monitor, turn-receipt, pins. Check with `claude plugin list` (each shows `<mod>@claude-mods`, enabled). Mods load at session start: restart the session or run `/reload-plugins`.
+
+Desktop app, by hand: + next to the prompt box, Plugins, Add marketplace `Guhan-SenSam/claude-mods`, Add plugin.
+Terminal prompt: `/plugin install <mod> --marketplace Guhan-SenSam/claude-mods`.
+
+Update: `claude plugin update <mod>@claude-mods`, then restart or `/reload-plugins`.
+Uninstall: `claude plugin uninstall <mod>@claude-mods`.
+
+## thinking-weather
+
+A pixel-art valley (320x180 vector pixel art) behind the conversation in the desktop app.
+
+What it shows:
+
+| When | The valley |
+|---|---|
+| Claude idle | A clear sky, or the set town's real weather |
+| Claude working | Storm clouds glide in from the corners and top; rain once they arrive; the bottom working row becomes a pixel storm cloud |
+| Each tool call or slash command | A lightning strike |
+| A failed tool call | A red strike |
+| Waiting on the person (AskUserQuestion, ExitPlanMode) | Rain stops, the lantern blinks |
+| Turn finished | Clouds roll out, sunbeams |
+| A subagent at work | A kite over the town until it finishes |
+| `git commit` or `git push` | A firework |
+| Compaction | Fog rolls through |
+| A long turn | Heavier rain after 2 minutes, darker after 5 |
+
+Eras follow the context window: 0-20% Stone Age, 20-40% village, 40-60% industrial, 60-80% modern (industrial and modern are drawn as the village for now), 80-100% sci-fi (spires, space elevator, hovercraft, ringed planet, aurora at night, an ion storm in place of the rain clouds). Compaction rolls fog in and resets society to the Stone Age.
+
+The outside world: the sky follows the local clock (dawn, day, dusk, night, sun and moon); with a town set, dawn and dusk land on its real sunrise and sunset and the moon shows its real phase. Seasons by date (southern hemisphere flipped): spring blossom, summer wheat, autumn trees, a muted winter; snow on the ground only when the weather reports snow (with no town, winter is snowy). With a town set, the idle sky follows its weather: clear, partly, overcast, rain, snow, fog, thunder. Holidays: Halloween (from Oct 15), December, New Year's Eve, July 4.
+
+Commands:
+
+| Command | Does |
+|---|---|
+| /weather-place <town> | Follow a town's real weather ("Town, Region" disambiguates); `off` stops |
+| /weather-era <era> | Preview stone, village, industrial, modern, scifi; `auto`; bare: say where society stands |
+| /weather-sky <sky> | Preview clear, partly, overcast, rain, snow, fog, thunder; `auto` |
+| /weather-season <season> | Preview spring, summer, autumn, winter, snow; `auto` |
+| /weather-holiday <name> | Preview halloween, christmas, newyear, july4; `none`, `auto`; bare: say what shows |
+| /weather-time HH:MM | Sky at a time of day; `auto` |
+| /weather-cycle [seconds] | A whole day sped up (default 48 s) |
+| /weather-tour | 40-second slideshow of seasons and skies |
+| /weather-demo | Kites, a firework, a red strike, fog |
+| /weather-now | What shows and why |
+| /weather-test | A burst of test lightning |
+| /weather-off | Clear the background for this session |
+
+Tools it gives Claude:
+
+| Tool | Input | Use |
+|---|---|---|
+| mcp__thinking-weather__weather_preview | sky, season, holiday, era (a name or "auto"), hour (0-24) | Show a look in clear weather; "auto" returns |
+| mcp__thinking-weather__weather_place | town, or "off" | Set or clear the real-weather town |
+| mcp__thinking-weather__weather_cycle | seconds (10-600) | Play a day sped up |
+
+Setting `place` (string, default empty). Ask the person before setting it: the town's name is sent to Open-Meteo once, then coordinates rounded to about 10 km every 30 minutes.
+
+    echo '{"place":"Tampa, Florida"}' | claude plugin configure thinking-weather@claude-mods --values-stdin
+
+Stored in ~/.claude/settings.json as `"pluginConfigs": { "thinking-weather@claude-mods": { "options": { "place": "Tampa, Florida" } } }`. A copy loaded with --plugin-dir uses the key `thinking-weather@inline`.
+
+Limits: draws in the desktop app only; the live tool-step row's orb is the app's own; no sound.
+
+## system-monitor
+
+A band above the prompt: pixel icons (chip, memory stick, graphics card), each with a bar of chunky segments and its reading. Green under 70%, gold from 70%, lantern orange from 90%, a glow brighter as it climbs; warmer at dawn and dusk, dimmer at night. A runtime-suspended GPU is left asleep (dimmed, "z"). Narrow prompts drop the bars, keeping icons and numbers. The terminal shows text bars like `CPU ████░░░░  42%`. `/sysmon` toggles a pane with threads, load average, memory, swap, VRAM and GPU temperature. Refreshes every 2 seconds; Linux only; NVIDIA optional.
+
+## turn-receipt
+
+A one-line receipt under each finished reply, e.g. `4m 12s · 23 tool calls · 2 agents · edited register.tsx, sample.ts +4 · 3.2k tokens out`. Interrupted turns read `interrupted after …`. Shown on desktop, terminal and phone; kept for the last 30 sessions.
+
+## pins
+
+Desktop: hover a reply and press Pin (Unpin to remove). Phone and terminal: `/pin` pins Claude's last reply. `/pins` shows or hides the Pinned pane (newest first, with pin times). Kept for the last 30 sessions.
+
+## Troubleshooting
+
+| Symptom | Cause and fix |
+|---|---|
+| No background | The terminal draws none; use the desktop app. Restart or /reload-plugins after install or update |
+| "registered /<command> but no command.run hook answered it" | A copy of the mod was unloaded mid-session; restart |
+| Two bands or competing backgrounds | An installed copy and a development copy are both loaded; remove the development copy |
+| Sky stays clear with a town set | Run /weather-now; the settings key must be thinking-weather@claude-mods |
+
+## Working on the code
+
+See AGENTS.md in the repository: https://github.com/Guhan-SenSam/claude-mods/blob/main/AGENTS.md
