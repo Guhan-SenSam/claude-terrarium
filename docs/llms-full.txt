@@ -46,22 +46,23 @@ Eras follow the context window: 0-20% Stone Age, 20-40% village, 40-60% industri
 
 The outside world: the sky follows the local clock (dawn, day, dusk, night, sun and moon); with a town set, dawn and dusk land on its real sunrise and sunset and the moon shows its real phase. Seasons by date (southern hemisphere flipped): spring blossom, summer wheat, autumn trees, a muted winter; snow on the ground only when the weather reports snow (with no town, winter is snowy). With a town set, the idle sky follows its weather: clear, partly, overcast, rain, snow, fog, thunder. Holidays: Halloween (from Oct 15), December, New Year's Eve, July 4.
 
-Commands:
+Commands (all one command, /terrarium-weather, then what to change; bare, it says what shows):
 
 | Command | Does |
 |---|---|
-| /weather-place <town> | Follow a town's real weather ("Town, Region" disambiguates); `off` stops |
-| /weather-era <era> | Preview stone, village, industrial, modern, scifi; `auto`; bare: say where society stands |
-| /weather-sky <sky> | Preview clear, partly, overcast, rain, snow, fog, thunder; `auto` |
-| /weather-season <season> | Preview spring, summer, autumn, winter, snow; `auto` |
-| /weather-holiday <name> | Preview halloween, christmas, newyear, july4; `none`, `auto`; bare: say what shows |
-| /weather-time HH:MM | Sky at a time of day; `auto` |
-| /weather-cycle [seconds] | A whole day sped up (default 48 s) |
-| /weather-tour | 40-second slideshow of seasons and skies |
-| /weather-demo | Kites, a firework, a red strike, fog |
-| /weather-now | What shows and why |
-| /weather-test | A burst of test lightning |
-| /weather-off | Clear the background for this session |
+| /terrarium-weather place <town> | Follow a town's real weather ("Town, Region" disambiguates); `off` stops |
+| /terrarium-weather era <era> | Preview stone, village, industrial, modern, scifi; `auto`; bare: say where society stands |
+| /terrarium-weather sky <sky> | Preview clear, partly, overcast, rain, snow, fog, thunder; `auto` |
+| /terrarium-weather season <season> | Preview spring, summer, autumn, winter, snow; `auto` |
+| /terrarium-weather holiday <name> | Preview halloween, christmas, newyear, july4; `none`, `auto`; bare: say what shows |
+| /terrarium-weather time HH:MM | Sky at a time of day; `auto` |
+| /terrarium-weather reset | Clear every preview (sky, season, era, holiday, time) |
+| /terrarium-weather cycle [seconds] | A whole day sped up (default 48 s) |
+| /terrarium-weather tour | 40-second slideshow of seasons and skies |
+| /terrarium-weather demo | Kites, a firework, a red strike, fog |
+| /terrarium-weather now | What shows and why |
+| /terrarium-weather test | A burst of test lightning |
+| /terrarium-weather off | Clear the background for this session |
 
 Tools it gives Claude:
 
@@ -81,7 +82,7 @@ Limits: draws in the desktop app only; the live tool-step row's orb is the app's
 
 ## system-monitor
 
-A band above the prompt: pixel icons (chip, memory stick, graphics card), each with a bar of chunky segments and its reading. Green under 70%, gold from 70%, lantern orange from 90%, a glow brighter as it climbs; warmer at dawn and dusk, dimmer at night. A runtime-suspended GPU is left asleep (dimmed, "z"). Narrow prompts drop the bars, keeping icons and numbers. The terminal shows text bars like `CPU ████░░░░  42%`. `/sysmon` toggles a pane with threads, load average, memory, swap, VRAM and GPU temperature. Refreshes every 2 seconds; Linux only; NVIDIA optional.
+A band above the prompt: pixel icons (chip, memory stick, graphics card), each with a bar of chunky segments and its reading. Green under 70%, gold from 70%, lantern orange from 90%, a glow brighter as it climbs; warmer at dawn and dusk, dimmer at night. A runtime-suspended GPU is left asleep (dimmed, "z"). Narrow prompts drop the bars, keeping icons and numbers. The terminal shows text bars like `CPU ████░░░░  42%`. `/terrarium-monitor` toggles a pane with threads, load average, memory, swap, VRAM and GPU temperature. Refreshes every 2 seconds; Linux only; NVIDIA optional.
 
 ## turn-receipt
 
@@ -89,7 +90,7 @@ A one-line receipt under each finished reply, e.g. `4m 12s · 23 tool calls · 2
 
 ## pins
 
-Desktop: hover a reply and press Pin (Unpin to remove). Phone and terminal: `/pin` pins Claude's last reply. `/pins` shows or hides the Pinned pane (newest first, with pin times). Kept for the last 30 sessions.
+Desktop: hover a reply and press Pin (Unpin to remove). Phone and terminal: `/terrarium-pins add` pins Claude's last reply. `/terrarium-pins` shows or hides the Pinned pane (newest first, with pin times). Kept for the last 30 sessions.
 
 ## Troubleshooting
 
@@ -98,7 +99,7 @@ Desktop: hover a reply and press Pin (Unpin to remove). Phone and terminal: `/pi
 | No background | The terminal draws none; use the desktop app. Restart or /reload-plugins after install or update |
 | "registered /<command> but no command.run hook answered it" | A copy of the mod was unloaded mid-session; restart |
 | Two bands or competing backgrounds | An installed copy and a development copy are both loaded; remove the development copy |
-| Sky stays clear with a town set | Run /weather-now; the settings key must be thinking-weather@claude-terrarium |
+| Sky stays clear with a town set | Run /terrarium-weather now; the settings key must be thinking-weather@claude-terrarium |
 
 ## Working on the code
 

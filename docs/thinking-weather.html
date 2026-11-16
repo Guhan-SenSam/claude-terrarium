@@ -74,25 +74,27 @@
 </div>
 
 <h2 id="commands">Commands</h2>
+<p>Everything is one command, <code>/terrarium-weather</code>, followed by what to change. On its own it says what the background shows; with a word it doesn't know, it lists the rest.</p>
 <table>
 <tr><th>Command</th><th>Does</th></tr>
-<tr><td><code>/weather-place &lt;town&gt;</code></td><td>Follow the real weather in a town (<code>Town, Region</code> picks between towns of one name); <code>off</code> stops.</td></tr>
-<tr><td><code>/weather-era &lt;era&gt;</code></td><td>Preview <code>stone</code>, <code>village</code>, <code>industrial</code>, <code>modern</code> or <code>scifi</code>; <code>auto</code> follows the context. Bare, it says where society stands.</td></tr>
-<tr><td><code>/weather-sky &lt;sky&gt;</code></td><td>Preview <code>clear</code>, <code>partly</code>, <code>overcast</code>, <code>rain</code>, <code>snow</code>, <code>fog</code>, <code>thunder</code>; <code>auto</code>.</td></tr>
-<tr><td><code>/weather-season &lt;season&gt;</code></td><td>Preview <code>spring</code>, <code>summer</code>, <code>autumn</code>, <code>winter</code>, <code>snow</code>; <code>auto</code>.</td></tr>
-<tr><td><code>/weather-holiday &lt;name&gt;</code></td><td>Preview <code>halloween</code>, <code>christmas</code>, <code>newyear</code>, <code>july4</code>; <code>none</code> or <code>auto</code>.</td></tr>
-<tr><td><code>/weather-time HH:MM</code></td><td>Show the sky at a time of day; <code>auto</code> follows the clock.</td></tr>
-<tr><td><code>/weather-cycle [seconds]</code></td><td>Play a whole day in under a minute.</td></tr>
-<tr><td><code>/weather-tour</code></td><td>A 40-second slideshow of seasons and skies.</td></tr>
-<tr><td><code>/weather-demo</code></td><td>Show the session events: kites, a firework, a red strike, fog.</td></tr>
-<tr><td><code>/weather-now</code></td><td>Say what the background shows and why.</td></tr>
-<tr><td><code>/weather-test</code></td><td>Fire a burst of test lightning.</td></tr>
-<tr><td><code>/weather-off</code></td><td>Clear the background for this session.</td></tr>
+<tr><td><code>/terrarium-weather place &lt;town&gt;</code></td><td>Follow the real weather in a town (<code>Town, Region</code> picks between towns of one name); <code>off</code> stops.</td></tr>
+<tr><td><code>/terrarium-weather era &lt;era&gt;</code></td><td>Preview <code>stone</code>, <code>village</code>, <code>industrial</code>, <code>modern</code> or <code>scifi</code>; <code>auto</code> follows the context. Bare, it says where society stands.</td></tr>
+<tr><td><code>/terrarium-weather sky &lt;sky&gt;</code></td><td>Preview <code>clear</code>, <code>partly</code>, <code>overcast</code>, <code>rain</code>, <code>snow</code>, <code>fog</code>, <code>thunder</code>; <code>auto</code>.</td></tr>
+<tr><td><code>/terrarium-weather season &lt;season&gt;</code></td><td>Preview <code>spring</code>, <code>summer</code>, <code>autumn</code>, <code>winter</code>, <code>snow</code>; <code>auto</code>.</td></tr>
+<tr><td><code>/terrarium-weather holiday &lt;name&gt;</code></td><td>Preview <code>halloween</code>, <code>christmas</code>, <code>newyear</code>, <code>july4</code>; <code>none</code> or <code>auto</code>.</td></tr>
+<tr><td><code>/terrarium-weather time HH:MM</code></td><td>Show the sky at a time of day; <code>auto</code> follows the clock.</td></tr>
+<tr><td><code>/terrarium-weather reset</code></td><td>Clear every preview: sky, season, era, holiday and time follow the real ones again.</td></tr>
+<tr><td><code>/terrarium-weather cycle [seconds]</code></td><td>Play a whole day in under a minute.</td></tr>
+<tr><td><code>/terrarium-weather tour</code></td><td>A 40-second slideshow of seasons and skies.</td></tr>
+<tr><td><code>/terrarium-weather demo</code></td><td>Show the session events: kites, a firework, a red strike, fog.</td></tr>
+<tr><td><code>/terrarium-weather now</code></td><td>Say what the background shows and why.</td></tr>
+<tr><td><code>/terrarium-weather test</code></td><td>Fire a burst of test lightning.</td></tr>
+<tr><td><code>/terrarium-weather off</code></td><td>Clear the background for this session.</td></tr>
 </table>
 <p>Claude can use the same through three tools: <code>weather_preview</code> (sky, season, holiday, era, hour), <code>weather_place</code> and <code>weather_cycle</code>.</p>
 
 <h2 id="settings">Settings</h2>
-<p>One setting, <code>place</code>: the town whose weather the sky follows. Empty by default, which sends nothing anywhere. Set it with <code>/weather-place</code>, or from a shell:</p>
+<p>One setting, <code>place</code>: the town whose weather the sky follows. Empty by default, which sends nothing anywhere. Set it with <code>/terrarium-weather place</code>, or from a shell:</p>
 <pre>echo '{"place":"Tampa, Florida"}' | claude plugin configure thinking-weather@claude-terrarium --values-stdin</pre>
 <p>which stores it in <code>~/.claude/settings.json</code>:</p>
 <pre>"pluginConfigs": {

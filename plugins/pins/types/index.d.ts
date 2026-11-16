@@ -1,5 +1,5 @@
 export type Pin = {
-  /** The transcript row it was pinned from, or a minted id for `/pin`. */
+  /** The transcript row it was pinned from, or a minted id for `/terrarium-pins add`. */
   id: string
   /** The last words of its text, whitespace folded: finds the row again. */
   key: string

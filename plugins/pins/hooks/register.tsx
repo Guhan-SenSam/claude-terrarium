@@ -73,26 +73,27 @@ async function unpin($: EngineInterface, id: string) {
 
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
-    await $.command.register({ name: 'pin', description: "Pin Claude's last reply" })
-    await $.command.register({ name: 'pins', description: 'Show or hide the Pinned pane' })
+    await $.command.register({ name: 'terrarium-pins', description: "Show or hide the Pinned pane; `add` pins Claude's last reply", argumentHint: 'add' })
     // Runs at the start and again after every reload.
     await attach($, await $.session.id())
 
     return next(e)
   })
 
-  on('command.run', { command: 'pin' }, async $ => {
-    const messages = await $.session.messages()
-    const last = messages.findLast(message => message.role === 'assistant' && message.text.trim())
-    if (!last) return { text: 'There is no reply to pin yet.' }
-    const key = textKey(last.text)
-    if (!isPinned(await read($, pins), '', key)) await toggle($, `last-${await $.clock.now()}`, last.text)
-    else await $.ui.open({ id: PANE, title: TITLE })
+  // one command named for the mod: `/terrarium-pins` shows or hides the pane, `/terrarium-pins add` pins the last reply
+  on('command.run', { command: 'terrarium-pins' }, async ($, e) => {
+    const arg = e.args.trim().toLowerCase()
+    if (arg === 'add') {
+      const messages = await $.session.messages()
+      const last = messages.findLast(message => message.role === 'assistant' && message.text.trim())
+      if (!last) return { text: 'There is no reply to pin yet.' }
+      const key = textKey(last.text)
+      if (!isPinned(await read($, pins), '', key)) await toggle($, `last-${await $.clock.now()}`, last.text)
+      else await $.ui.open({ id: PANE, title: TITLE })
 
-    return { text: 'Pinned the last reply.' }
-  })
-
-  on('command.run', { command: 'pins' }, async $ => {
+      return { text: 'Pinned the last reply.' }
+    }
+    if (arg !== '') return { text: '/terrarium-pins shows or hides the Pinned pane; /terrarium-pins add pins Claude\'s last reply.' }
     const isOpen = (await $.ui.panes()).some(pane => pane.id === PANE)
     if (isOpen) {
       await $.ui.close({ id: PANE })
@@ -106,7 +107,7 @@ export const register: Register = on => {
 
   // A Pin button at the end of each reply block on the desktop, shown on
   // hover; a pinned block keeps an Unpin button. The phone and the terminal
-  // have no hover: there `/pin` pins the last reply.
+  // have no hover: there `/terrarium-pins add` pins the last reply.
   on('ui.render', { component: 'AssistantMessage' }, async ($, e, next) => {
     const drawn = await next(e)
     const { text } = e.props
@@ -136,7 +137,7 @@ export const register: Register = on => {
     const { Box, Button, Markdown, Text } = $.ui.resolve(e)
     const list = await read($, pins)
     if (list.length === 0) {
-      return <Text dimColor>Nothing pinned yet. Hover a reply and press Pin, or type /pin to pin the last one.</Text>
+      return <Text dimColor>Nothing pinned yet. Hover a reply and press Pin, or type /terrarium-pins add to pin the last one.</Text>
     }
 
     return (

@@ -21,7 +21,7 @@ like the weather scene: warmer at dawn and dusk, dimmer at night with a lantern-
 sleeping GPU shows its card dimmed with a little "z". On a narrow prompt the bars shrink, then drop out, and the icons and
 percentages stay.
 
-**A detail pane**, opened with `/sysmon`: the same three bars at full width, each with a detail
+**A detail pane**, opened with `/terrarium-monitor`: the same three bars at full width, each with a detail
 line (threads and load average, used memory and swap, VRAM and GPU temperature). In the desktop and
 phone apps it has a soft animated background that turns from teal to amber to red and speeds up as
 the machine gets busier.
@@ -51,8 +51,8 @@ In the desktop app, where `/plugin` does not run: click **+** next to the prompt
 
 - The band appears on its own once a session starts. Its `[-]` collapses it, and it steps aside
   when Claude shows a survey there.
-- `/sysmon` opens the detail pane, and closes it when it's open.
-- The phone app doesn't draw the band yet, so open the pane with `/sysmon` to watch from your phone.
+- `/terrarium-monitor` opens the detail pane, and closes it when it's open.
+- The phone app doesn't draw the band yet, so open the pane with `/terrarium-monitor` to watch from your phone.
 - Claude Code decides where the pane goes (beside the conversation, or above the prompt in a
   narrow terminal); a mod can't pin it to one side.
 

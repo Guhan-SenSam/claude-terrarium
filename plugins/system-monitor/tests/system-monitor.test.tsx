@@ -56,7 +56,7 @@ function machine(on: On, gpuState: string) {
     return result(SAMPLES[Math.min(procCalls++, SAMPLES.length - 1)]!)
   })
   on('fs.read', () => ({ value: `${gpuState}\n` }))
-  on('command.register', () => ({ value: { command: 'sysmon' } }))
+  on('command.register', () => ({ value: { command: 'terrarium-monitor' } }))
   on('session.start', (_, e) => ({ cwd: e.cwd }))
 
   return ran

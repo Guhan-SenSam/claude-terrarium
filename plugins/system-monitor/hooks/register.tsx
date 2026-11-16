@@ -115,7 +115,7 @@ function meters(data: Usage): Meter[] {
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     await $.command.register({
-      name: 'sysmon',
+      name: 'terrarium-monitor',
       description: 'Show or hide the system monitor pane (CPU, RAM, GPU)',
     })
     // The band above the prompt is always up, so sampling always runs.
@@ -124,7 +124,7 @@ export const register: Register = on => {
     return next(e)
   })
 
-  on('command.run', { command: 'sysmon' }, async $ => {
+  on('command.run', { command: 'terrarium-monitor' }, async $ => {
     const isOpen = (await $.ui.panes()).some(pane => pane.id === PANE)
     if (isOpen) {
       await $.ui.close({ id: PANE })

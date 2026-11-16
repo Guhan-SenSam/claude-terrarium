@@ -75,13 +75,13 @@ test('the terminal and the phone draw no Pin button', async ($, on) => {
   }
 })
 
-test('/pin pins the last reply, and the pane shows it on the phone', async ($, on) => {
+test('/terrarium-pins add pins the last reply, and the pane shows it on the phone', async ($, on) => {
   const opened = engine(on)
 
   await $.session.start({ cwd: '/', surface: 'mobile', isInteractive: true })
   const ran = await $.command.run({
-    command: 'pin',
-    args: '',
+    command: 'terrarium-pins',
+    args: 'add',
     origin: { kind: 'composer' },
     presentation: { isFullscreen: false, columns: 80 },
   })

@@ -39,7 +39,7 @@ rolls fog in, and behind it society falls back to the Stone Age: the fog lifts o
 | 60-80% | Modern: wind turbines, pylons, an asphalt road, flats and glass towers with aircraft lights, an airliner overhead |
 | 80-100% | Sci-fi |
 
-`/weather-era <era>` previews one; `/weather-era` says where society stands.
+`/terrarium-weather era <era>` previews one; `/terrarium-weather era` says where society stands.
 
 ## The session in the weather
 
@@ -50,14 +50,14 @@ rolls fog in, and behind it society falls back to the Stone Age: the fog lifts o
 - **Compacting the conversation** rolls fog through the valley until it is done.
 - **A long turn** grows the storm: heavier rain after two minutes, a darker sky after five.
 
-`/weather-demo` shows them all in about 20 seconds.
+`/terrarium-weather demo` shows them all in about 20 seconds.
 
 ## Sun, moon and holidays
 
 With a town set, dawn and dusk land on its real sunrise and sunset each day. The moon shows its
 real phase, worked out locally. The town decorates itself: pumpkins on the doorsteps through late
 October, string lights on the eaves and a tree by the path in December, fireworks after dark on New
-Year's Eve and the Fourth of July (with bunting by day). `/weather-holiday <name>` previews one.
+Year's Eve and the Fourth of July (with bunting by day). `/terrarium-weather holiday <name>` previews one.
 
 ## Seasons and real weather
 
@@ -69,24 +69,28 @@ works, its own storm still rolls in over whatever the weather is.
 
 The weather comes from [Open-Meteo](https://open-meteo.com) (free, no key) every 30 minutes. The
 town's name is sent once to look it up; after that only its coordinates, rounded to about 10 km.
-With no town set, nothing is sent anywhere. Set it with `/weather-place Tampa` (or `Town, Region`
-to choose between towns of the same name), or in the plugin's settings; `/weather-place off`
+With no town set, nothing is sent anywhere. Set it with `/terrarium-weather place Tampa` (or `Town, Region`
+to choose between towns of the same name), or in the plugin's settings; `/terrarium-weather place off`
 turns it off.
+
+Everything is one command, `/terrarium-weather`, followed by what to change. On its own it says
+what the background shows; with a word it doesn't know, it lists the rest.
 
 | Command | |
 |---|---|
-| `/weather-place <town>` | Follow the real weather in a town; `off` stops |
-| `/weather-sky <sky>` | Preview a sky: `clear`, `partly`, `overcast`, `rain`, `snow`, `fog`, `thunder`; `auto` follows the weather |
-| `/weather-season <season>` | Preview `spring`, `summer`, `autumn`, `winter` or `snow`; `auto` follows the calendar |
-| `/weather-now` | Say what the background shows and why |
-| `/weather-tour` | A 40-second slideshow of the seasons and skies |
-| `/weather-holiday <name>` | Preview `halloween`, `christmas`, `newyear` or `july4`; `none` or `auto` |
-| `/weather-demo` | Show the session events: kites, a firework, a red strike, fog |
-| `/weather-era <era>` | Preview `stone`, `village`, `industrial`, `modern` or `scifi`; `auto` follows the context |
-| `/weather-cycle [seconds]` | Play a whole day in under a minute (default 48 s) |
-| `/weather-time HH:MM` | Show the sky at a time of day; `/weather-time auto` follows the clock again |
-| `/weather-test` | Fire a burst of test lightning |
-| `/weather-off` | Clear the background for this session |
+| `/terrarium-weather place <town>` | Follow the real weather in a town; `off` stops |
+| `/terrarium-weather sky <sky>` | Preview a sky: `clear`, `partly`, `overcast`, `rain`, `snow`, `fog`, `thunder`; `auto` follows the weather |
+| `/terrarium-weather season <season>` | Preview `spring`, `summer`, `autumn`, `winter` or `snow`; `auto` follows the calendar |
+| `/terrarium-weather now` | Say what the background shows and why |
+| `/terrarium-weather tour` | A 40-second slideshow of the seasons and skies |
+| `/terrarium-weather holiday <name>` | Preview `halloween`, `christmas`, `newyear` or `july4`; `none` or `auto` |
+| `/terrarium-weather demo` | Show the session events: kites, a firework, a red strike, fog |
+| `/terrarium-weather era <era>` | Preview `stone`, `village`, `industrial`, `modern` or `scifi`; `auto` follows the context |
+| `/terrarium-weather cycle [seconds]` | Play a whole day in under a minute (default 48 s) |
+| `/terrarium-weather time HH:MM` | Show the sky at a time of day; `/terrarium-weather time auto` follows the clock again |
+| `/terrarium-weather reset` | Clear every preview: sky, season, era, holiday and time follow the real ones again |
+| `/terrarium-weather test` | Fire a burst of test lightning |
+| `/terrarium-weather off` | Clear the background for this session |
 
 Claude can also play the day itself with the `weather_cycle` tool, preview skies and seasons with
 `weather_preview`, and set the town with `weather_place`.

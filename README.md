@@ -13,7 +13,7 @@ Each one installs on its own.
 | Mod | What it does |
 |---|---|
 | [**thinking-weather**](plugins/thinking-weather) | A pixel-art valley behind the conversation. Storms roll in while Claude works, every tool call strikes lightning, and society advances from the Stone Age to a sci-fi city as the context fills, then resets when it is compacted. Follows the clock, the seasons and your town's real weather. |
-| [**system-monitor**](plugins/system-monitor) | Pixel-art CPU, RAM and GPU meters above the prompt, lit for the time of day; `/sysmon` opens a detail pane. |
+| [**system-monitor**](plugins/system-monitor) | Pixel-art CPU, RAM and GPU meters above the prompt, lit for the time of day; `/terrarium-monitor` opens a detail pane. |
 | [**turn-receipt**](plugins/turn-receipt) | A one-line receipt under each finished reply: time taken, tool calls, agents, files edited, tokens. |
 | [**pins**](plugins/pins) | Pin replies into a Pinned pane you can come back to, from the desktop or your phone. |
 
@@ -56,7 +56,7 @@ storm cloud. Everything is vector pixel art drawn live, so it stays sharp at any
 
 A band above the prompt with a chip, a memory stick and a graphics card, each followed by a
 game-style bar in the weather scene's colours: green, then gold from 70%, then lantern orange from
-90%. It warms at dusk and dims at night. The terminal shows text bars instead. `/sysmon` opens a
+90%. It warms at dusk and dims at night. The terminal shows text bars instead. `/terrarium-monitor` opens a
 pane with threads, load, memory, swap, VRAM and GPU temperature.
 [Full guide](plugins/system-monitor/README.md).
 
@@ -71,7 +71,7 @@ A receipt under each finished reply, so you can see at a glance which turns did 
 
 ## pins
 
-Hover a reply on the desktop and press **Pin**, or type `/pin` on your phone. Pinned replies stay
+Hover a reply on the desktop and press **Pin**, or type `/terrarium-pins add` on your phone. Pinned replies stay
 in a Pinned pane, newest first, and come back when you reopen any of your last 30 sessions.
 [Full guide](plugins/pins/README.md).
 

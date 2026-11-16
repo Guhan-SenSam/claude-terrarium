@@ -1,7 +1,7 @@
 {
   "name": "system-monitor",
   "version": "0.5.0",
-  "description": "Short live CPU, RAM and GPU bars above the prompt, with a detail pane on /sysmon",
+  "description": "Short live CPU, RAM and GPU bars above the prompt, with a detail pane on /terrarium-monitor",
   "author": {
     "name": "Guhan Sensam"
   },

@@ -175,12 +175,12 @@ test('society advances with the context, an era for each fifth', async () => {
   expect([0, 19, 20, 45, 61, 80, 100].map(eraLevel)).toEqual([0, 0, 1, 2, 3, 4, 4])
 })
 
-test('/weather-era shows another era on the backdrop', async ($, on) => {
+test('/terrarium-weather era shows another era on the backdrop', async ($, on) => {
   engine(on)
   const view = await $.ui.mount(BACKDROP)
   const svg = async () => String((await view.find({ type: 'Svg' }))?.props.source ?? '')
   expect((await svg()).includes('#e8dcff')).toBe(false)
-  await $.command.run({ command: 'weather-era', args: 'scifi' })
+  await $.command.run({ command: 'terrarium-weather', args: 'era scifi' })
   expect((await svg()).includes('#e8dcff')).toBe(true) // the future's ringed planet
 })
 
@@ -257,4 +257,17 @@ test('each era flies its own thing for a subagent, out at the sides', async () =
   const xs = [...flyers[1]!.matchAll(/class="bob"[^>]*><path stroke="[^"]+" d="M(\d+)/g)].map(m => Number(m[1]))
   expect(xs.length).toBe(2)
   expect(xs[0]! < 80 && xs[1]! > 240).toBe(true)
+})
+
+test('one command named for the mod holds every setting', async ($, on) => {
+  engine(on)
+  const view = await $.ui.mount(BACKDROP)
+  const svg = async () => String((await view.find({ type: 'Svg' }))?.props.source ?? '')
+  const run = async (args: string) => String(((await $.command.run({ command: 'terrarium-weather', args } as never)) as { text?: unknown }).text)
+  expect(await run('')).toContain('Showing') // on its own it says what the background shows
+  expect(await run('nonsense')).toContain('sky clear | partly')
+  expect(await run('era scifi')).toContain('scifi era')
+  expect((await svg()).includes('#e8dcff')).toBe(true)
+  expect(await run('reset')).toContain('Previews cleared')
+  expect((await svg()).includes('#e8dcff')).toBe(false)
 })

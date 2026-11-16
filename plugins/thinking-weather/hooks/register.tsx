@@ -22,6 +22,21 @@ const ERA_ORDER: readonly Era[] = ['stone', 'village', 'industrial', 'modern', '
 const eraState = atom({ plugin: 'thinking-weather', key: 'era' } as const, { level: 0, since: 0 } as EraState)
 let eraOverride: Era | undefined
 const levelFor = eraLevel
+
+// /terrarium-weather's subcommands, each answering with the text the command shows
+const SUBS_HINT = 'now | sky <kind> | season <name> | era <name> | holiday <name> | time <HH:MM> | place <town> | reset | demo | tour | cycle [seconds] | test | off'
+const HELP = [
+  '/terrarium-weather on its own says what the background shows. Then:',
+  '  sky clear | partly | overcast | rain | snow | fog | thunder | auto',
+  '  season spring | summer | autumn | winter | snow | auto',
+  '  era stone | village | industrial | modern | scifi | auto',
+  '  holiday halloween | christmas | newyear | july4 | none | auto',
+  '  time HH:MM | auto',
+  '  place <town> | off       follow a town\'s real weather',
+  '  reset                    clear every preview',
+  '  demo, tour, cycle [seconds], test',
+  '  off                      clear the background until the next session',
+].join('\n')
 // a fall in the context this large between two measurements can only be a compaction
 const COMPACT_DROP = 15
 let lastPercent: number | undefined
@@ -57,12 +72,12 @@ const DONE_MS = 20000
 let pending: Strike[] = []
 let flushing = false
 let seed = 1
-// /weather-time sets an hour to preview; undefined follows the local clock.
+// /terrarium-weather time sets an hour to preview; undefined follows the local clock.
 let hourOverride: number | undefined
 const REDRAW_MS = 2 * 60 * 1000
 const WEATHER_MS = 30 * 60 * 1000
 
-// Previews from /weather-sky and /weather-season; undefined follows the weather and the calendar.
+// Previews from /terrarium-weather sky and /terrarium-weather season; undefined follows the weather and the calendar.
 let skyOverride: Cond | undefined
 let seasonOverride: Season | 'snow' | undefined
 let holidayOverride: Holiday | 'none' | undefined
@@ -219,7 +234,7 @@ async function startCycle($: EngineInterface, seconds: number): Promise<string> 
 
 async function setPlace($: EngineInterface, town: string): Promise<string> {
   const value = town.toLowerCase() === 'off' ? '' : town
-  if (town === '') return place === '' ? 'No place set. /weather-place <town> sets one.' : `The sky follows the weather in ${place}.`
+  if (town === '') return place === '' ? 'No place set. /terrarium-weather place <town> sets one.' : `The sky follows the weather in ${place}.`
   const set = await $.config.set({ key: 'thinking-weather.place', value })
   if ('deny' in set && set.deny) return `Could not save the place: ${set.deny}`
   place = value
@@ -279,14 +294,7 @@ export const register: Register = (on, options: PluginOptions) => {
 
   on('session.start', async ($, e, next) => {
     await $.theme.set(LOOK)
-    await $.command.register({ name: 'weather-place', description: 'Set the town whose real weather the sky follows, or "off"', argumentHint: 'town | off' })
-    await $.command.register({ name: 'weather-sky', description: 'Preview a sky: clear, partly, overcast, rain, snow, fog, thunder, or auto', argumentHint: CONDS.join(' | ') + ' | auto' })
-    await $.command.register({ name: 'weather-season', description: 'Preview a season: spring, summer, autumn, winter, snow, or auto', argumentHint: SEASONS.join(' | ') + ' | auto' })
-    await $.command.register({ name: 'weather-now', description: 'Say what the background is showing and why' })
-    await $.command.register({ name: 'weather-holiday', description: 'Preview a holiday: halloween, christmas, newyear, july4, none, or auto', argumentHint: 'halloween | christmas | newyear | july4 | none | auto' })
-    await $.command.register({ name: 'weather-era', description: 'Preview an era: stone, village, industrial, modern, scifi, or auto', argumentHint: 'stone | village | industrial | modern | scifi | auto' })
-    await $.command.register({ name: 'weather-demo', description: 'Show the session events: kites, a firework, a red strike, fog' })
-    await $.command.register({ name: 'weather-tour', description: 'A slideshow of the seasons and skies, about 40 seconds' })
+    await $.command.register({ name: 'terrarium-weather', description: 'The weather background: what it shows, previews (sky, season, era, holiday, time), your town, demos', argumentHint: SUBS_HINT })
     await $.tool.register({
       name: 'weather_preview',
       description: 'Shows the thinking-weather background with a given sky and/or season, as a preview. Pass "auto" to return either to the real weather and calendar.',
@@ -318,16 +326,12 @@ export const register: Register = (on, options: PluginOptions) => {
       const prev = await read($, eraState)
       if (level !== prev.level) await update($, eraState, () => ({ level, since: 0 }))
     }).catch(() => undefined)
-    await $.command.register({ name: 'weather-test', description: 'Fire a burst of test lightning' })
-    await $.command.register({ name: 'weather-off', description: 'Clear the thinking-weather background' })
-    await $.command.register({ name: 'weather-cycle', description: 'Play a whole day in under a minute', argumentHint: '[seconds]' })
     await $.tool.register({
       name: 'weather_cycle',
       description: 'Plays the thinking-weather background through a whole day (dawn, day, dusk, night) in clear weather, sped up, then returns to the real clock.',
       inputSchema: { type: 'object', properties: { seconds: { type: 'number', description: 'How long the whole day takes, 10 to 600; default 48.' } } },
       isDeferred: false,
     })
-    await $.command.register({ name: 'weather-time', description: 'Preview a time of day (HH:MM), or "auto" to follow the clock', argumentHint: 'HH:MM | auto' })
     // the sky follows the clock: redraw every couple of minutes
     $.clock.every(REDRAW_MS, () => void write($))
     return next(e)
@@ -448,46 +452,10 @@ export const register: Register = (on, options: PluginOptions) => {
     return next(e)
   })
 
-  on('command.run', { command: 'weather-era' }, async ($, e, next) => {
-    const arg = e.args.trim()
-    if (arg === '') {
-      const st = await read($, eraState)
-      return { text: `Society is in the ${ERA_ORDER[st.level]} era${eraOverride ? ` (previewing ${eraOverride})` : ''}. It moves up a step for each fifth of the context, and back to the Stone Age at compaction.` }
-    }
-    if (arg === 'auto') eraOverride = undefined
-    else if ((ERA_ORDER as readonly string[]).includes(arg)) eraOverride = arg as Era
-    else return { text: `Eras: ${ERA_ORDER.join(', ')}, or auto.` }
-    await write($)
-    return { text: eraOverride === undefined ? 'The era follows the context again.' : `Showing the ${eraOverride} era. /weather-era auto follows the context.` }
-  })
 
-  on('command.run', { command: 'weather-holiday' }, async ($, e, next) => {
-    const arg = e.args.trim()
-    if (arg === '') {
-      const shown = outsideAt(await $.clock.now(), await read($, report)).holiday
-      return { text: `${shown === undefined ? 'No holiday decorations' : `Decorated for ${shown}`}${holidayOverride === undefined ? ', from the calendar' : ' (preview)'}. /weather-holiday <${HOLIDAYS.join(' | ')} | none | auto>` }
-    }
-    if (arg === 'auto') holidayOverride = undefined
-    else if (arg === 'none' || (HOLIDAYS as readonly string[]).includes(arg)) holidayOverride = arg as Holiday | 'none'
-    else return { text: `Holidays: ${HOLIDAYS.join(', ')}, none, or auto.` }
-    await write($)
-    return { text: holidayOverride === undefined ? 'Holidays follow the calendar again.' : `Decorated for ${holidayOverride}. /weather-holiday auto follows the calendar.` }
-  })
 
-  on('command.run', { command: 'weather-demo' }, async ($, e, next) => ({ text: await demo($) }))
 
-  on('command.run', { command: 'weather-test' }, async ($, e, next) => {
-    await write($, 'working')
-    const now = await $.clock.now()
-    for (let i = 0; i < 5; i++) pending.push({ t: now + i * 140, seed: seed++ })
-    flushSoon($)
-    return { text: 'Five test strikes on the way.' }
-  })
 
-  on('command.run', { command: 'weather-cycle' }, async ($, e, next) => {
-    const n = Number(e.args.trim())
-    return { text: await startCycle($, Number.isFinite(n) && n > 0 ? n : CYCLE_S) }
-  })
 
   on('tool.call', { tool: 'mcp__thinking-weather__weather_cycle' }, async ($, e, next) => {
     // a mod tool's arguments sit beside `tool` on the input
@@ -496,15 +464,12 @@ export const register: Register = (on, options: PluginOptions) => {
     return { result: await startCycle($, n) }
   })
 
-  on('command.run', { command: 'weather-place' }, async ($, e, next) => ({ text: await setPlace($, e.args.trim()) }))
 
   on('tool.call', { tool: 'mcp__thinking-weather__weather_place' }, async ($, e, next) => {
     const town = String((e as { town?: unknown }).town ?? '').trim()
     return { result: await setPlace($, town) }
   })
 
-  on('command.run', { command: 'weather-sky' }, async ($, e, next) => ({ text: await preview($, e.args.trim(), undefined) }))
-  on('command.run', { command: 'weather-season' }, async ($, e, next) => ({ text: await preview($, undefined, e.args.trim()) }))
 
   on('tool.call', { tool: 'mcp__thinking-weather__weather_preview' }, async ($, e, next) => {
     const args = e as { sky?: unknown; season?: unknown; holiday?: unknown; hour?: unknown; era?: unknown }
@@ -521,33 +486,31 @@ export const register: Register = (on, options: PluginOptions) => {
     return { result: [shown, ...extra].join(' ') }
   })
 
-  on('command.run', { command: 'weather-tour' }, async ($, e, next) => ({ text: await startTour($) }))
 
-  on('command.run', { command: 'weather-now' }, async ($, e, next) => {
-    const r = await read($, report)
-    const o = outsideAt(await $.clock.now(), r)
-    const where = place === '' ? 'No place set (/weather-place <town>).' : r === null ? `Place: ${place}, no report yet.` : `${r.name}: ${r.cond}, ${Math.round(r.tempC)}°C, checked ${new Date(r.at).toLocaleTimeString()}.`
-    const shown = `Showing ${o.cond}, ${o.snowCover ? 'snow on the ground' : o.season}${skyOverride || seasonOverride ? ' (preview; "auto" returns to the real one)' : ''}.`
-    return { text: `${where} ${shown}` }
-  })
 
-  on('command.run', { command: 'weather-time' }, async ($, e, next) => {
-    const arg = e.args.trim()
-    const m = /^(\d{1,2})(?::(\d{2}))?$/.exec(arg)
-    if (arg === '' || arg === 'auto') {
-      hourOverride = undefined
-    } else if (m && Number(m[1]) < 24 && Number(m[2] ?? 0) < 60) {
-      hourOverride = Number(m[1]) + Number(m[2] ?? 0) / 60
-    } else {
-      return { text: 'Give a time like 06:15 or 21:00, or "auto" to follow the clock.' }
+
+
+  // every setting lives under the one command named for the mod: /terrarium-weather <what> [value]
+
+  on('command.run', { command: 'terrarium-weather' }, async ($, e, next) => {
+    const [name = 'now', ...rest] = e.args.trim().split(/\s+/).filter(Boolean)
+    const args = { args: rest.join(' ') }
+    switch (name.toLowerCase()) {
+      case 'era': return subEra($, args)
+      case 'holiday': return subHoliday($, args)
+      case 'demo': return subDemo($, args)
+      case 'test': return subTest($, args)
+      case 'cycle': return subCycle($, args)
+      case 'place': return subPlace($, args)
+      case 'sky': return subSky($, args)
+      case 'season': return subSeason($, args)
+      case 'tour': return subTour($, args)
+      case 'now': return subNow($, args)
+      case 'time': return subTime($, args)
+      case 'off': return subOff($, args)
+      case 'reset': return subReset($, args)
+      default: return { text: HELP }
     }
-    await write($)
-    return { text: hourOverride === undefined ? 'The sky follows your clock again.' : `Showing the sky at ${arg}. /weather-time auto goes back to the clock.` }
-  })
-
-  on('command.run', { command: 'weather-off' }, async ($, e, next) => {
-    await $.theme.clear()
-    return { text: 'Weather cleared. /reload-plugins or a new session brings it back.' }
   })
 
   // The working row on desktop: a pixel storm cloud doing what the turn does, the step's words,
@@ -588,4 +551,101 @@ export const register: Register = (on, options: PluginOptions) => {
     const ev = await read($, events)
     return <Svg source={scene(s, Date.now(), shownHour, outside, ev)} alt="A pixel-art sky over fields that turns stormy while Claude works" isInteractive />
   })
+}
+
+// ---- /terrarium-weather <what> [value]: one function per subcommand ----
+
+async function subEra($: EngineInterface, e: { args: string }): Promise<{ text: string }> {
+  const arg = e.args.trim()
+  if (arg === '') {
+    const st = await read($, eraState)
+    return { text: `Society is in the ${ERA_ORDER[st.level]} era${eraOverride ? ` (previewing ${eraOverride})` : ''}. It moves up a step for each fifth of the context, and back to the Stone Age at compaction.` }
+  }
+  if (arg === 'auto') eraOverride = undefined
+  else if ((ERA_ORDER as readonly string[]).includes(arg)) eraOverride = arg as Era
+  else return { text: `Eras: ${ERA_ORDER.join(', ')}, or auto.` }
+  await write($)
+  return { text: eraOverride === undefined ? 'The era follows the context again.' : `Showing the ${eraOverride} era. /terrarium-weather era auto follows the context.` }
+}
+
+async function subHoliday($: EngineInterface, e: { args: string }): Promise<{ text: string }> {
+  const arg = e.args.trim()
+  if (arg === '') {
+    const shown = outsideAt(await $.clock.now(), await read($, report)).holiday
+    return { text: `${shown === undefined ? 'No holiday decorations' : `Decorated for ${shown}`}${holidayOverride === undefined ? ', from the calendar' : ' (preview)'}. /terrarium-weather holiday <${HOLIDAYS.join(' | ')} | none | auto>` }
+  }
+  if (arg === 'auto') holidayOverride = undefined
+  else if (arg === 'none' || (HOLIDAYS as readonly string[]).includes(arg)) holidayOverride = arg as Holiday | 'none'
+  else return { text: `Holidays: ${HOLIDAYS.join(', ')}, none, or auto.` }
+  await write($)
+  return { text: holidayOverride === undefined ? 'Holidays follow the calendar again.' : `Decorated for ${holidayOverride}. /terrarium-weather holiday auto follows the calendar.` }
+}
+
+async function subDemo($: EngineInterface, e: { args: string }): Promise<{ text: string }> {
+  return ({ text: await demo($) })
+}
+
+async function subTest($: EngineInterface, e: { args: string }): Promise<{ text: string }> {
+  await write($, 'working')
+  const now = await $.clock.now()
+  for (let i = 0; i < 5; i++) pending.push({ t: now + i * 140, seed: seed++ })
+  flushSoon($)
+  return { text: 'Five test strikes on the way.' }
+}
+
+async function subCycle($: EngineInterface, e: { args: string }): Promise<{ text: string }> {
+  const n = Number(e.args.trim())
+  return { text: await startCycle($, Number.isFinite(n) && n > 0 ? n : CYCLE_S) }
+}
+
+async function subPlace($: EngineInterface, e: { args: string }): Promise<{ text: string }> {
+  return ({ text: await setPlace($, e.args.trim()) })
+}
+
+async function subSky($: EngineInterface, e: { args: string }): Promise<{ text: string }> {
+  return ({ text: await preview($, e.args.trim(), undefined) })
+}
+
+async function subSeason($: EngineInterface, e: { args: string }): Promise<{ text: string }> {
+  return ({ text: await preview($, undefined, e.args.trim()) })
+}
+
+async function subTour($: EngineInterface, e: { args: string }): Promise<{ text: string }> {
+  return ({ text: await startTour($) })
+}
+
+async function subNow($: EngineInterface, e: { args: string }): Promise<{ text: string }> {
+  const r = await read($, report)
+  const o = outsideAt(await $.clock.now(), r)
+  const where = place === '' ? 'No place set (/terrarium-weather place <town>).' : r === null ? `Place: ${place}, no report yet.` : `${r.name}: ${r.cond}, ${Math.round(r.tempC)}°C, checked ${new Date(r.at).toLocaleTimeString()}.`
+  const shown = `Showing ${o.cond}, ${o.snowCover ? 'snow on the ground' : o.season}${skyOverride || seasonOverride ? ' (preview; "auto" returns to the real one)' : ''}.`
+  return { text: `${where} ${shown}` }
+}
+
+async function subTime($: EngineInterface, e: { args: string }): Promise<{ text: string }> {
+  const arg = e.args.trim()
+  const m = /^(\d{1,2})(?::(\d{2}))?$/.exec(arg)
+  if (arg === '' || arg === 'auto') {
+    hourOverride = undefined
+  } else if (m && Number(m[1]) < 24 && Number(m[2] ?? 0) < 60) {
+    hourOverride = Number(m[1]) + Number(m[2] ?? 0) / 60
+  } else {
+    return { text: 'Give a time like 06:15 or 21:00, or "auto" to follow the clock.' }
+  }
+  await write($)
+  return { text: hourOverride === undefined ? 'The sky follows your clock again.' : `Showing the sky at ${arg}. /terrarium-weather time auto goes back to the clock.` }
+}
+
+async function subOff($: EngineInterface, e: { args: string }): Promise<{ text: string }> {
+  await $.theme.clear()
+  return { text: 'Weather cleared. /reload-plugins or a new session brings it back.' }
+}
+
+async function subReset($: EngineInterface, e: { args: string }): Promise<{ text: string }> {
+  skyOverride = seasonOverride = undefined
+  eraOverride = undefined
+  holidayOverride = undefined
+  hourOverride = undefined
+  await write($)
+  return { text: 'Previews cleared: the sky, season, era, holiday and time follow the real ones again.' }
 }
