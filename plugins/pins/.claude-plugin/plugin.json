@@ -4,6 +4,6 @@
   "description": "Pin Claude's replies into a Pinned pane you can come back to, from the desktop or your phone",
   "author": { "name": "Guhan Sensam" },
   "license": "MIT",
-  "repository": "https://github.com/Guhan-SenSam/claude-mods",
+  "repository": "https://github.com/Guhan-SenSam/claude-terrarium",
   "types": "./types/index.d.ts"
 }

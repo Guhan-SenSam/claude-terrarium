@@ -1,11 +1,11 @@
-# claude-mods: everything in one file
+# claude-terrarium: everything in one file
 
-> Mods for Claude Code from the marketplace Guhan-SenSam/claude-mods. Four mods, each installed alone: thinking-weather, system-monitor, turn-receipt, pins. Source: https://github.com/Guhan-SenSam/claude-mods. Docs: https://guhan-sensam.github.io/claude-mods/
+> Mods for Claude Code from the marketplace Guhan-SenSam/claude-terrarium. Four mods, each installed alone: thinking-weather, system-monitor, turn-receipt, pins. Source: https://github.com/Guhan-SenSam/claude-terrarium. Docs: https://guhan-sensam.github.io/claude-terrarium/
 
 ## Facts
 
 - Mods are Claude Code plugins with function hooks (TypeScript hooks modules). Built and tested on Claude Code 2.1.325.
-- Marketplace source: `Guhan-SenSam/claude-mods`. Once added it is named `claude-mods`, so plugin ids are `<mod>@claude-mods`.
+- Marketplace source: `Guhan-SenSam/claude-terrarium`. Once added it is named `claude-terrarium`, so plugin ids are `<mod>@claude-terrarium`.
 - Visual parts (thinking-weather's background and working row, system-monitor's pixel band) draw in the Claude Code desktop app. The terminal shows text parts only.
 - system-monitor reads Linux `/proc` (and `nvidia-smi` when present).
 - Nothing leaves the machine except thinking-weather's real weather, which is off until a town is set.
@@ -13,15 +13,15 @@
 
 ## Install
 
-    claude plugin install <mod> --marketplace Guhan-SenSam/claude-mods --scope user
+    claude plugin install <mod> --marketplace Guhan-SenSam/claude-terrarium --scope user
 
-Mods: thinking-weather, system-monitor, turn-receipt, pins. Check with `claude plugin list` (each shows `<mod>@claude-mods`, enabled). Mods load at session start: restart the session or run `/reload-plugins`.
+Mods: thinking-weather, system-monitor, turn-receipt, pins. Check with `claude plugin list` (each shows `<mod>@claude-terrarium`, enabled). Mods load at session start: restart the session or run `/reload-plugins`.
 
-Desktop app, by hand: + next to the prompt box, Plugins, Add marketplace `Guhan-SenSam/claude-mods`, Add plugin.
-Terminal prompt: `/plugin install <mod> --marketplace Guhan-SenSam/claude-mods`.
+Desktop app, by hand: + next to the prompt box, Plugins, Add marketplace `Guhan-SenSam/claude-terrarium`, Add plugin.
+Terminal prompt: `/plugin install <mod> --marketplace Guhan-SenSam/claude-terrarium`.
 
-Update: `claude plugin update <mod>@claude-mods`, then restart or `/reload-plugins`.
-Uninstall: `claude plugin uninstall <mod>@claude-mods`.
+Update: `claude plugin update <mod>@claude-terrarium`, then restart or `/reload-plugins`.
+Uninstall: `claude plugin uninstall <mod>@claude-terrarium`.
 
 ## thinking-weather
 
@@ -73,9 +73,9 @@ Tools it gives Claude:
 
 Setting `place` (string, default empty). Ask the person before setting it: the town's name is sent to Open-Meteo once, then coordinates rounded to about 10 km every 30 minutes.
 
-    echo '{"place":"Tampa, Florida"}' | claude plugin configure thinking-weather@claude-mods --values-stdin
+    echo '{"place":"Tampa, Florida"}' | claude plugin configure thinking-weather@claude-terrarium --values-stdin
 
-Stored in ~/.claude/settings.json as `"pluginConfigs": { "thinking-weather@claude-mods": { "options": { "place": "Tampa, Florida" } } }`. A copy loaded with --plugin-dir uses the key `thinking-weather@inline`.
+Stored in ~/.claude/settings.json as `"pluginConfigs": { "thinking-weather@claude-terrarium": { "options": { "place": "Tampa, Florida" } } }`. A copy loaded with --plugin-dir uses the key `thinking-weather@inline`.
 
 Limits: draws in the desktop app only; the live tool-step row's orb is the app's own; no sound.
 
@@ -98,8 +98,8 @@ Desktop: hover a reply and press Pin (Unpin to remove). Phone and terminal: `/pi
 | No background | The terminal draws none; use the desktop app. Restart or /reload-plugins after install or update |
 | "registered /<command> but no command.run hook answered it" | A copy of the mod was unloaded mid-session; restart |
 | Two bands or competing backgrounds | An installed copy and a development copy are both loaded; remove the development copy |
-| Sky stays clear with a town set | Run /weather-now; the settings key must be thinking-weather@claude-mods |
+| Sky stays clear with a town set | Run /weather-now; the settings key must be thinking-weather@claude-terrarium |
 
 ## Working on the code
 
-See AGENTS.md in the repository: https://github.com/Guhan-SenSam/claude-mods/blob/main/AGENTS.md
+See AGENTS.md in the repository: https://github.com/Guhan-SenSam/claude-terrarium/blob/main/AGENTS.md

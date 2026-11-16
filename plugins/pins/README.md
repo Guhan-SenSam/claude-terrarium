@@ -15,11 +15,11 @@ Pins are kept for the last 30 sessions, so they come back when you reopen one.
 ## Install
 
 ```
-/plugin install pins --marketplace Guhan-SenSam/claude-mods
+/plugin install pins --marketplace Guhan-SenSam/claude-terrarium
 ```
 
 In the desktop app: **+** next to the prompt box, then **Plugins**, **Add marketplace** with
-`Guhan-SenSam/claude-mods`, then **Add plugin**.
+`Guhan-SenSam/claude-terrarium`, then **Add plugin**.
 
 ## Develop
 

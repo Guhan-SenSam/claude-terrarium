@@ -6,7 +6,7 @@
     "name": "Guhan Sensam"
   },
   "license": "MIT",
-  "repository": "https://github.com/Guhan-SenSam/claude-mods",
+  "repository": "https://github.com/Guhan-SenSam/claude-terrarium",
   "types": "./types/index.d.ts",
   "userConfig": {
     "place": {

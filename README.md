@@ -1,4 +1,4 @@
-# claude-mods
+# claude-terrarium
 
 ![A pixel-art valley at night: a sci-fi city of glowing spires under a ringed planet and an aurora](docs/images/hero.png)
 
@@ -7,8 +7,8 @@ a pixel-art world behind the conversation that reacts to what Claude is doing, a
 monitor above the prompt, a receipt under every reply, and a pane for the replies worth keeping.
 Each one installs on its own.
 
-**Docs:** [guhan-sensam.github.io/claude-mods](https://guhan-sensam.github.io/claude-mods/) ·
-**For AI agents:** [llms.txt](https://guhan-sensam.github.io/claude-mods/llms.txt)
+**Docs:** [guhan-sensam.github.io/claude-terrarium](https://guhan-sensam.github.io/claude-terrarium/) ·
+**For AI agents:** [llms.txt](https://guhan-sensam.github.io/claude-terrarium/llms.txt)
 
 | Mod | What it does |
 |---|---|
@@ -80,18 +80,18 @@ They need a Claude Code with mods (built and tested on 2.1.325). Backgrounds and
 draw in the desktop app; the terminal shows the text parts.
 
 **In the desktop app:** click **+** next to the prompt box, then **Plugins**, **Add marketplace**
-with `Guhan-SenSam/claude-mods`, then **Add plugin** and pick a mod.
+with `Guhan-SenSam/claude-terrarium`, then **Add plugin** and pick a mod.
 
 **At a terminal prompt:**
 
 ```
-/plugin install thinking-weather --marketplace Guhan-SenSam/claude-mods
+/plugin install thinking-weather --marketplace Guhan-SenSam/claude-terrarium
 ```
 
 **From a shell:**
 
 ```bash
-claude plugin install thinking-weather --marketplace Guhan-SenSam/claude-mods
+claude plugin install thinking-weather --marketplace Guhan-SenSam/claude-terrarium
 ```
 
 Pick the user scope to have a mod in every session. To update: `claude plugin update <mod>`.

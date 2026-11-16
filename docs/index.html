@@ -3,27 +3,27 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>claude-mods: mods for Claude Code</title>
+<title>claude-terrarium: mods for Claude Code</title>
 <meta name="description" content="A pixel-art world behind the conversation, a pixel system monitor, turn receipts and pinned replies for Claude Code.">
 <link rel="alternate" type="text/plain" href="llms.txt" title="For AI agents">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Silkscreen&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
-<meta property="og:title" content="claude-mods: mods for Claude Code">
+<meta property="og:title" content="claude-terrarium: mods for Claude Code">
 <meta property="og:description" content="A pixel-art world behind the conversation, a pixel system monitor, turn receipts and pinned replies for Claude Code.">
 <meta property="og:image" content="images/hero.png">
 </head>
 <body>
 <header class="top"><div class="wrap">
-<a class="brand" href="index.html">claude-mods</a>
+<a class="brand" href="index.html">claude-terrarium</a>
 <nav><a href="index.html" aria-current="page">Home</a> <a href="thinking-weather.html">thinking-weather</a> <a href="system-monitor.html">system-monitor</a> <a href="turn-receipt.html">turn-receipt</a> <a href="pins.html">pins</a> <a href="agents.html">For agents</a></nav>
 </div></header>
 
 <section class="hero">
 <img src="images/hero.png" alt="A pixel-art valley at night: a sci-fi city of glowing spires under a ringed planet and an aurora" width="1280" height="720">
 <div class="over"><div class="wrap">
-<h1>claude-mods</h1>
+<h1>claude-terrarium</h1>
 <p class="lede">Mods for Claude Code that make a long session nicer to live in. Each one installs on its own.</p>
 </div></div>
 </section>
@@ -43,11 +43,11 @@
 <figure class="wide"><img src="images/band.png" alt="Pixel-art CPU, RAM and GPU meters by day and at night" width="1240" height="250"><figcaption>system-monitor's band, by day and at night.</figcaption></figure>
 
 <h2>Install</h2>
-<p>In the <strong>desktop app</strong>: <strong>+</strong> next to the prompt box, <strong>Plugins</strong>, <strong>Add marketplace</strong> with <code>Guhan-SenSam/claude-mods</code>, then <strong>Add plugin</strong>. From a shell:</p>
-<pre>claude plugin install thinking-weather --marketplace Guhan-SenSam/claude-mods
-claude plugin install system-monitor --marketplace Guhan-SenSam/claude-mods
-claude plugin install turn-receipt --marketplace Guhan-SenSam/claude-mods
-claude plugin install pins --marketplace Guhan-SenSam/claude-mods</pre>
+<p>In the <strong>desktop app</strong>: <strong>+</strong> next to the prompt box, <strong>Plugins</strong>, <strong>Add marketplace</strong> with <code>Guhan-SenSam/claude-terrarium</code>, then <strong>Add plugin</strong>. From a shell:</p>
+<pre>claude plugin install thinking-weather --marketplace Guhan-SenSam/claude-terrarium
+claude plugin install system-monitor --marketplace Guhan-SenSam/claude-terrarium
+claude plugin install turn-receipt --marketplace Guhan-SenSam/claude-terrarium
+claude plugin install pins --marketplace Guhan-SenSam/claude-terrarium</pre>
 <p>The mods need a Claude Code with mods support; they are built and tested on 2.1.325. Backgrounds and the pixel band draw in the desktop app; the terminal shows the text parts.</p>
 <p class="note">Setting this up with an AI agent? Point it at <a href="agents.html">For agents</a> or <a href="llms.txt">llms.txt</a>.</p>
 
@@ -55,7 +55,7 @@ claude plugin install pins --marketplace Guhan-SenSam/claude-mods</pre>
 <p>Everything runs on your machine. The one exception is thinking-weather's real weather, off until you set a town: it then asks <a href="https://open-meteo.com">Open-Meteo</a> for the weather every 30 minutes, sending the town's name once and afterwards only coordinates rounded to about 10 km.</p>
 </main>
 <footer><div class="wrap">
-MIT licensed · <a href="https://github.com/Guhan-SenSam/claude-mods">Source on GitHub</a> ·
+MIT licensed · <a href="https://github.com/Guhan-SenSam/claude-terrarium">Source on GitHub</a> ·
 <a href="llms.txt">llms.txt</a> · <a href="llms-full.txt">llms-full.txt</a> ·
 Pixel art drawn as vector runs after the method of <a href="https://github.com/winchxyz/backdropkit">BackdropKit</a>.
 </div></footer>

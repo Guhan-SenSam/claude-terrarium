@@ -33,7 +33,7 @@ Bars turn amber at 70% and red at 90%, and refresh every 2 seconds.
 At the prompt of a terminal session:
 
 ```
-/plugin install system-monitor --marketplace Guhan-SenSam/claude-mods
+/plugin install system-monitor --marketplace Guhan-SenSam/claude-terrarium
 ```
 
 Answer `y` to add the marketplace, then pick a scope (user scope loads it in every session).
@@ -41,11 +41,11 @@ Answer `y` to add the marketplace, then pick a scope (user scope loads it in eve
 From a shell:
 
 ```bash
-claude plugin install system-monitor --marketplace Guhan-SenSam/claude-mods
+claude plugin install system-monitor --marketplace Guhan-SenSam/claude-terrarium
 ```
 
 In the desktop app, where `/plugin` does not run: click **+** next to the prompt box, then
-**Plugins**, **Add marketplace** with `Guhan-SenSam/claude-mods`, then **Add plugin**.
+**Plugins**, **Add marketplace** with `Guhan-SenSam/claude-terrarium`, then **Add plugin**.
 
 ## Use
 

@@ -1,7 +1,7 @@
 # AGENTS.md
 
 Guidance for AI coding agents working on this repository. People installing the mods want
-[README.md](README.md) or the [docs site](https://guhan-sensam.github.io/claude-mods/).
+[README.md](README.md) or the [docs site](https://guhan-sensam.github.io/claude-terrarium/).
 
 ## What this is
 
@@ -29,7 +29,7 @@ claude plugin test plugins/<name>
 
 Type-check with a tsconfig that includes the engine's `claude-code.d.ts` (the plugin-authoring
 skill writes it) and the mod's `hooks` and `types`. Bump the mod's `version` in `plugin.json` for
-every release; installed copies update with `claude plugin update <name>@claude-mods`.
+every release; installed copies update with `claude plugin update <name>@claude-terrarium`.
 
 ## thinking-weather
 

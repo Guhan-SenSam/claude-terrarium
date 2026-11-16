@@ -3,20 +3,20 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>For AI agents · claude-mods</title>
-<meta name="description" content="How an AI agent installs, configures and checks the claude-mods Claude Code mods.">
+<title>For AI agents · claude-terrarium</title>
+<meta name="description" content="How an AI agent installs, configures and checks the claude-terrarium Claude Code mods.">
 <link rel="alternate" type="text/plain" href="llms.txt" title="For AI agents">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Silkscreen&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
-<meta property="og:title" content="claude-mods: mods for Claude Code">
-<meta property="og:description" content="How an AI agent installs, configures and checks the claude-mods Claude Code mods.">
+<meta property="og:title" content="claude-terrarium: mods for Claude Code">
+<meta property="og:description" content="How an AI agent installs, configures and checks the claude-terrarium Claude Code mods.">
 <meta property="og:image" content="images/hero.png">
 </head>
 <body>
 <header class="top"><div class="wrap">
-<a class="brand" href="index.html">claude-mods</a>
+<a class="brand" href="index.html">claude-terrarium</a>
 <nav><a href="index.html">Home</a> <a href="thinking-weather.html">thinking-weather</a> <a href="system-monitor.html">system-monitor</a> <a href="turn-receipt.html">turn-receipt</a> <a href="pins.html">pins</a> <a href="agents.html" aria-current="page">For agents</a></nav>
 </div></header>
 <main class="wrap">
@@ -27,7 +27,7 @@
 
 <h2>Facts</h2>
 <ul>
-<li>Marketplace: <code>Guhan-SenSam/claude-mods</code> (GitHub). Marketplace name once added: <code>claude-mods</code>.</li>
+<li>Marketplace: <code>Guhan-SenSam/claude-terrarium</code> (GitHub). Marketplace name once added: <code>claude-terrarium</code>.</li>
 <li>Mods: <code>thinking-weather</code>, <code>system-monitor</code>, <code>turn-receipt</code>, <code>pins</code>. Each installs alone.</li>
 <li>Needs Claude Code with mods (function hooks); built and tested on 2.1.325.</li>
 <li>Visual parts draw in the desktop app. The terminal shows text parts only (system-monitor's text bars, turn-receipt, pins).</li>
@@ -37,8 +37,8 @@
 <h2>Install for the person</h2>
 <ol class="steps">
 <li>Ask which mods they want, and whether every session should have them (user scope) or only this project.</li>
-<li>Run, for each mod: <pre>claude plugin install &lt;mod&gt; --marketplace Guhan-SenSam/claude-mods --scope user</pre></li>
-<li>Check: <code>claude plugin list</code> shows <code>&lt;mod&gt;@claude-mods</code> as enabled.</li>
+<li>Run, for each mod: <pre>claude plugin install &lt;mod&gt; --marketplace Guhan-SenSam/claude-terrarium --scope user</pre></li>
+<li>Check: <code>claude plugin list</code> shows <code>&lt;mod&gt;@claude-terrarium</code> as enabled.</li>
 <li>Tell the person to restart the session or run <code>/reload-plugins</code>; mods load at session start.</li>
 </ol>
 
@@ -49,11 +49,11 @@
 <li>you call the tool <code>mcp__thinking-weather__weather_place</code> with <code>{"town": "Town, Region"}</code>, or</li>
 <li>you run (the recommended way, it validates the value):</li>
 </ul>
-<pre>echo '{"place":"Tampa, Florida"}' | claude plugin configure thinking-weather@claude-mods --values-stdin</pre>
+<pre>echo '{"place":"Tampa, Florida"}' | claude plugin configure thinking-weather@claude-terrarium --values-stdin</pre>
 <p>It is stored in <code>~/.claude/settings.json</code> as:</p>
 <pre>{
   "pluginConfigs": {
-    "thinking-weather@claude-mods": { "options": { "place": "Tampa, Florida" } }
+    "thinking-weather@claude-terrarium": { "options": { "place": "Tampa, Florida" } }
   }
 }</pre>
 <p class="note">The key is <code>&lt;plugin&gt;@&lt;marketplace&gt;</code>. A copy loaded with <code>--plugin-dir</code> reads <code>thinking-weather@inline</code> instead.</p>
@@ -73,18 +73,18 @@
 <tr><td>No background</td><td>The terminal draws none; use the desktop app. After install or update, restart or <code>/reload-plugins</code>.</td></tr>
 <tr><td>A command "registered but no hook answered it"</td><td>A copy of the mod was unloaded mid-session. Restart the session.</td></tr>
 <tr><td>Two bands or competing backgrounds</td><td>An installed copy and a development copy are both loaded. Remove the development copy.</td></tr>
-<tr><td>Sky stays clear with a town set</td><td>Check <code>/weather-now</code>; the settings key must be <code>thinking-weather@claude-mods</code>.</td></tr>
+<tr><td>Sky stays clear with a town set</td><td>Check <code>/weather-now</code>; the settings key must be <code>thinking-weather@claude-terrarium</code>.</td></tr>
 <tr><td>No sound</td><td>The mods make none.</td></tr>
 </table>
 
 <h2>Working on the code</h2>
-<p>Read <a href="https://github.com/Guhan-SenSam/claude-mods/blob/main/AGENTS.md">AGENTS.md</a> in the repository: layout, checks (<code>claude plugin validate</code>, <code>claude plugin test</code>), the generated art, the size limit and the pitfalls.</p>
+<p>Read <a href="https://github.com/Guhan-SenSam/claude-terrarium/blob/main/AGENTS.md">AGENTS.md</a> in the repository: layout, checks (<code>claude plugin validate</code>, <code>claude plugin test</code>), the generated art, the size limit and the pitfalls.</p>
 
 <h2>Uninstall</h2>
-<pre>claude plugin uninstall &lt;mod&gt;@claude-mods</pre>
+<pre>claude plugin uninstall &lt;mod&gt;@claude-terrarium</pre>
 </main>
 <footer><div class="wrap">
-MIT licensed · <a href="https://github.com/Guhan-SenSam/claude-mods">Source on GitHub</a> ·
+MIT licensed · <a href="https://github.com/Guhan-SenSam/claude-terrarium">Source on GitHub</a> ·
 <a href="llms.txt">llms.txt</a> · <a href="llms-full.txt">llms-full.txt</a> ·
 Pixel art drawn as vector runs after the method of <a href="https://github.com/winchxyz/backdropkit">BackdropKit</a>.
 </div></footer>

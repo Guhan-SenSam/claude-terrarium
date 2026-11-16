@@ -118,11 +118,11 @@ and plan approvals only.
 ## Install
 
 ```
-/plugin install thinking-weather --marketplace Guhan-SenSam/claude-mods
+/plugin install thinking-weather --marketplace Guhan-SenSam/claude-terrarium
 ```
 
 In the desktop app: **+** next to the prompt box, then **Plugins**, **Add marketplace** with
-`Guhan-SenSam/claude-mods`, then **Add plugin**.
+`Guhan-SenSam/claude-terrarium`, then **Add plugin**.
 
 ## Develop
 

@@ -1,9 +1,9 @@
 {
-  "name": "claude-mods",
+  "name": "claude-terrarium",
   "owner": {
     "name": "Guhan Sensam"
   },
-  "description": "The Claude Code mods Guhan uses: a system monitor, turn receipts, pinned replies and a weather background",
+  "description": "Mods for Claude Code: a pixel-art world behind the conversation that follows the session, a pixel system monitor, turn receipts and pinned replies",
   "plugins": [
     {
       "name": "system-monitor",

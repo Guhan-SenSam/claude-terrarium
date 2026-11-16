@@ -4,6 +4,6 @@
   "description": "A one-line receipt under each finished reply: time taken, tool calls, agents, files edited and tokens",
   "author": { "name": "Guhan Sensam" },
   "license": "MIT",
-  "repository": "https://github.com/Guhan-SenSam/claude-mods",
+  "repository": "https://github.com/Guhan-SenSam/claude-terrarium",
   "types": "./types/index.d.ts"
 }

@@ -1,19 +1,19 @@
-# claude-mods
+# claude-terrarium
 
-> Mods for Claude Code (function-hook plugins) from the marketplace Guhan-SenSam/claude-mods: thinking-weather (a pixel-art background that reacts to the session, the context, the clock, the seasons and real weather), system-monitor (pixel CPU/RAM/GPU meters above the prompt), turn-receipt (a receipt under each reply) and pins (a pane of pinned replies). Each installs alone with `claude plugin install <mod> --marketplace Guhan-SenSam/claude-mods --scope user`.
+> Mods for Claude Code (function-hook plugins) from the marketplace Guhan-SenSam/claude-terrarium: thinking-weather (a pixel-art background that reacts to the session, the context, the clock, the seasons and real weather), system-monitor (pixel CPU/RAM/GPU meters above the prompt), turn-receipt (a receipt under each reply) and pins (a pane of pinned replies). Each installs alone with `claude plugin install <mod> --marketplace Guhan-SenSam/claude-terrarium --scope user`.
 
 Visual parts draw in the Claude Code desktop app; the terminal shows text parts only. Built and tested on Claude Code 2.1.325. Ask the person before setting thinking-weather's town: it sends the town to Open-Meteo.
 
 ## Docs
 
-- [For AI agents](https://guhan-sensam.github.io/claude-mods/agents.html): install, configure, tools, troubleshooting
-- [Everything in one file](https://guhan-sensam.github.io/claude-mods/llms-full.txt)
-- [thinking-weather](https://guhan-sensam.github.io/claude-mods/thinking-weather.html): states, eras, commands, settings
-- [system-monitor](https://guhan-sensam.github.io/claude-mods/system-monitor.html)
-- [turn-receipt](https://guhan-sensam.github.io/claude-mods/turn-receipt.html)
-- [pins](https://guhan-sensam.github.io/claude-mods/pins.html)
+- [For AI agents](https://guhan-sensam.github.io/claude-terrarium/agents.html): install, configure, tools, troubleshooting
+- [Everything in one file](https://guhan-sensam.github.io/claude-terrarium/llms-full.txt)
+- [thinking-weather](https://guhan-sensam.github.io/claude-terrarium/thinking-weather.html): states, eras, commands, settings
+- [system-monitor](https://guhan-sensam.github.io/claude-terrarium/system-monitor.html)
+- [turn-receipt](https://guhan-sensam.github.io/claude-terrarium/turn-receipt.html)
+- [pins](https://guhan-sensam.github.io/claude-terrarium/pins.html)
 
 ## Source
 
-- [Repository](https://github.com/Guhan-SenSam/claude-mods)
-- [AGENTS.md](https://github.com/Guhan-SenSam/claude-mods/blob/main/AGENTS.md): working on the code
+- [Repository](https://github.com/Guhan-SenSam/claude-terrarium)
+- [AGENTS.md](https://github.com/Guhan-SenSam/claude-terrarium/blob/main/AGENTS.md): working on the code

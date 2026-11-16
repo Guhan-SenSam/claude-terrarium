@@ -3,20 +3,20 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>thinking-weather · claude-mods</title>
+<title>thinking-weather · claude-terrarium</title>
 <meta name="description" content="A pixel-art valley behind the Claude Code conversation that reacts to the session, the context, the clock, the seasons and the real weather.">
 <link rel="alternate" type="text/plain" href="llms.txt" title="For AI agents">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Silkscreen&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
-<meta property="og:title" content="thinking-weather · claude-mods">
+<meta property="og:title" content="thinking-weather · claude-terrarium">
 <meta property="og:description" content="A pixel-art valley behind the Claude Code conversation that reacts to the session, the context, the clock, the seasons and the real weather.">
 <meta property="og:image" content="images/hero.png">
 </head>
 <body>
 <header class="top"><div class="wrap">
-<a class="brand" href="index.html">claude-mods</a>
+<a class="brand" href="index.html">claude-terrarium</a>
 <nav><a href="index.html">Home</a> <a href="thinking-weather.html" aria-current="page">thinking-weather</a> <a href="system-monitor.html">system-monitor</a> <a href="turn-receipt.html">turn-receipt</a> <a href="pins.html">pins</a> <a href="agents.html">For agents</a></nav>
 </div></header>
 
@@ -89,10 +89,10 @@
 
 <h2 id="settings">Settings</h2>
 <p>One setting, <code>place</code>: the town whose weather the sky follows. Empty by default, which sends nothing anywhere. Set it with <code>/weather-place</code>, or from a shell:</p>
-<pre>echo '{"place":"Tampa, Florida"}' | claude plugin configure thinking-weather@claude-mods --values-stdin</pre>
+<pre>echo '{"place":"Tampa, Florida"}' | claude plugin configure thinking-weather@claude-terrarium --values-stdin</pre>
 <p>which stores it in <code>~/.claude/settings.json</code>:</p>
 <pre>"pluginConfigs": {
-  "thinking-weather@claude-mods": { "options": { "place": "Tampa, Florida" } }
+  "thinking-weather@claude-terrarium": { "options": { "place": "Tampa, Florida" } }
 }</pre>
 
 <h2 id="limits">Where it draws</h2>
@@ -105,16 +105,16 @@
 <h2 id="how">How it is drawn</h2>
 <p>The desktop app strips embedded images from a background, so everything is vector pixel art on a 320x180 grid: one stroke-width-1 path per colour run, each colour reaching one cell under its lighter neighbours so no hairlines show at fractional window sizes. Every scene stays under the app's 131,072-character limit, and every animation steps on one shared half-second clock, so the background redraws at most twice a second.</p>
 <h2 id="install">Install</h2>
-<p>In the <strong>desktop app</strong>: click <strong>+</strong> next to the prompt box, then <strong>Plugins</strong>, <strong>Add marketplace</strong> with <code>Guhan-SenSam/claude-mods</code>, then <strong>Add plugin</strong> and pick <code>thinking-weather</code>.</p>
+<p>In the <strong>desktop app</strong>: click <strong>+</strong> next to the prompt box, then <strong>Plugins</strong>, <strong>Add marketplace</strong> with <code>Guhan-SenSam/claude-terrarium</code>, then <strong>Add plugin</strong> and pick <code>thinking-weather</code>.</p>
 <p>At a terminal prompt:</p>
-<pre>/plugin install thinking-weather --marketplace Guhan-SenSam/claude-mods</pre>
+<pre>/plugin install thinking-weather --marketplace Guhan-SenSam/claude-terrarium</pre>
 <p>From a shell:</p>
-<pre>claude plugin install thinking-weather --marketplace Guhan-SenSam/claude-mods</pre>
-<p>Choose the user scope to load it in every session. Update with <code>claude plugin update thinking-weather@claude-mods</code>, then restart or run <code>/reload-plugins</code>.</p>
+<pre>claude plugin install thinking-weather --marketplace Guhan-SenSam/claude-terrarium</pre>
+<p>Choose the user scope to load it in every session. Update with <code>claude plugin update thinking-weather@claude-terrarium</code>, then restart or run <code>/reload-plugins</code>.</p>
 
 </main>
 <footer><div class="wrap">
-MIT licensed · <a href="https://github.com/Guhan-SenSam/claude-mods">Source on GitHub</a> ·
+MIT licensed · <a href="https://github.com/Guhan-SenSam/claude-terrarium">Source on GitHub</a> ·
 <a href="llms.txt">llms.txt</a> · <a href="llms-full.txt">llms-full.txt</a> ·
 Pixel art drawn as vector runs after the method of <a href="https://github.com/winchxyz/backdropkit">BackdropKit</a>.
 </div></footer>
