@@ -22,6 +22,23 @@ const ERA_ORDER: readonly Era[] = ['stone', 'village', 'industrial', 'modern', '
 const eraState = atom({ plugin: 'thinking-weather', key: 'era' } as const, { level: 0, since: 0 } as EraState)
 let eraOverride: Era | undefined
 const levelFor = eraLevel
+// a fall in the context this large between two measurements can only be a compaction
+const COMPACT_DROP = 15
+let lastPercent: number | undefined
+let fogDepth = 0
+let lastLift = 0
+
+async function fogIn($: EngineInterface) {
+  if (fogDepth++ === 0) await event($, (ev, now) => ({ ...ev, fogUntil: now + COMPACT_FOG_MS }))
+}
+
+async function fogLift($: EngineInterface) {
+  if (fogDepth === 0 || --fogDepth > 0) return
+  const now = await $.clock.now()
+  lastLift = now
+  await update($, eraState, () => ({ level: 0, since: now }))
+  await event($, (ev, t) => ({ ...ev, fogUntil: t + 2000 }), 2000 + 4200)
+}
 const GIT_SHIP = /\bgit\b[^|;&]*\b(commit|push)\b/
 
 const LOOK: ThemeSetArgs = {
@@ -285,6 +302,7 @@ export const register: Register = (on, options: PluginOptions) => {
     // a session that resumes partway through starts in the era its context has reached
     void $.session.usage().then(async u => {
       if (u.context.percent === undefined) return
+      lastPercent ??= u.context.percent
       const level = levelFor(u.context.percent)
       const prev = await read($, eraState)
       if (level !== prev.level) await update($, eraState, () => ({ level, since: 0 }))
@@ -377,20 +395,37 @@ export const register: Register = (on, options: PluginOptions) => {
   })
 
   // compacting the conversation rolls fog through the valley; behind it society falls back to the
-  // Stone Age, and the fog lifts on the basics
+  // Stone Age, and the fog lifts on the basics. A managed plugin above this one can skip past
+  // session.compact, so /compact itself and a sudden drop in the context bring the fog as well.
   on('session.compact', async ($, e, next) => {
-    await event($, (ev, now) => ({ ...ev, fogUntil: now + COMPACT_FOG_MS }))
-    const done = await next(e)
-    const now = await $.clock.now()
-    await update($, eraState, () => ({ level: 0, since: now }))
-    await event($, (ev, t) => ({ ...ev, fogUntil: t + 2000 }), 2000 + 4200)
-    return done
+    await fogIn($)
+    try {
+      return await next(e)
+    } finally {
+      await fogLift($)
+    }
+  })
+
+  on('command.run', { command: 'compact' }, async ($, e, next) => {
+    await fogIn($)
+    try {
+      return await next(e)
+    } finally {
+      await fogLift($)
+    }
   })
 
   // after each turn the engine measures the session: society reaches the era its context has
   on('session.measure', async ($, e, next) => {
     const percent = e.context.percent
     if (percent !== undefined) {
+      const before = lastPercent
+      lastPercent = percent
+      if (fogDepth === 0 && before !== undefined && before - percent >= COMPACT_DROP && (await $.clock.now()) - lastLift > 30_000) {
+        // the context fell away without the fog: a compaction this mod was not shown
+        await fogIn($)
+        await fogLift($)
+      }
       const level = levelFor(percent)
       const now = await $.clock.now()
       const prev = await read($, eraState)

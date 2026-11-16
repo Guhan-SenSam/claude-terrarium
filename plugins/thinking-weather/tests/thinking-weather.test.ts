@@ -208,3 +208,26 @@ test('rain falls down its columns and loops without a jump', async () => {
   expect(svg).toMatch(/\.rain\{stroke-dasharray:2 46;animation:rain \d+ms steps\(24\)/)
   expect(svg.includes('to{stroke-dashoffset:-48}')).toBe(true)
 })
+
+test('/compact rolls the fog in even when session.compact is skipped by a plugin above', async ($, on) => {
+  // the backdrop draws on the real clock, so these tests' clocks start there too
+  engine(on, Date.now())
+  on('command.run', () => ({ text: 'compacted' }))
+  const view = await $.ui.mount(BACKDROP)
+  await $.command.run({ command: 'compact', args: '' } as never)
+  const svg = String((await view.find({ type: 'Svg' }))?.props.source ?? '')
+  expect(svg.includes('id="fogg"')).toBe(true)
+})
+
+test('a sudden fall in the context counts as a compaction and brings the fog', async ($, on) => {
+  engine(on, Date.now())
+  on('session.measure', (_, e) => ({ changed: e.changed }))
+  const view = await $.ui.mount(BACKDROP)
+  const svg = async () => String((await view.find({ type: 'Svg' }))?.props.source ?? '')
+  const measure = (percent: number) => $.session.measure({ context: { percent }, rateLimits: [], changed: ['context'] } as never)
+  await measure(62)
+  await measure(66)
+  expect((await svg()).includes('id="fogg"')).toBe(false)
+  await measure(9)
+  expect((await svg()).includes('id="fogg"')).toBe(true)
+})
