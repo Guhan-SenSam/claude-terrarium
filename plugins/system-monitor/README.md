@@ -16,8 +16,9 @@ That is how the terminal draws it. In the desktop app the band is pixel art to m
 [thinking-weather](../thinking-weather): a little chip, memory stick and graphics card for icons,
 each followed by a game-style bar of chunky segments in a dark frame and its reading. The bars use
 the weather scene's colours (meadow green, wheat gold from 70%, lantern orange from 90%), and the
-lit segments carry a stepped pixel glow, brighter the higher the reading. A sleeping GPU shows its
-card dimmed with a little "z". On a narrow prompt the bars shrink, then drop out, and the icons and
+lit segments carry a stepped pixel glow, brighter the higher the reading. The band follows the time of day
+like the weather scene: warmer at dawn and dusk, dimmer at night with a lantern-amber glow. A
+sleeping GPU shows its card dimmed with a little "z". On a narrow prompt the bars shrink, then drop out, and the icons and
 percentages stay.
 
 **A detail pane**, opened with `/sysmon`: the same three bars at full width, each with a detail

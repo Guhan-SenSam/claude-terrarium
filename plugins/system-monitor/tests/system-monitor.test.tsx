@@ -1,6 +1,8 @@
 import { expect, mock, test, type TestBody } from 'claude-code/testing'
 import type { On } from 'claude-code'
 
+import * as pixel from '../hooks/pixel'
+
 const PANE = {
   plugin: 'system-monitor',
   component: 'Pane',
@@ -61,7 +63,8 @@ function machine(on: On, gpuState: string) {
 }
 
 async function started($: Parameters<TestBody>[0], on: On, gpuState = 'active') {
-  const clock = mock.clock(on, { now: 1_700_000_000_000 })
+  // local noon, so the band is in its day colours
+  const clock = mock.clock(on, { now: new Date(2023, 10, 14, 12).getTime() })
   const ran = machine(on, gpuState)
   await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
   await clock.advance(2000)
@@ -171,4 +174,20 @@ test('the band yields to a survey', async ($, on) => {
   const ui = await $.ui.mount({ ...BAND, surface: 'desktop', props: { ...BAND.props, hasSurvey: true } })
   expect((await ui.find({ type: 'Text' }))?.text).toBe('engine')
   await ui.unmount()
+})
+
+test('the band is lit for the hour: the same by day, dimmer with a lantern glow at night', async () => {
+  const { meterSvg, timeOfDay } = pixel
+  expect(timeOfDay(12)).toEqual({ night: 0, warm: 0 })
+  expect(timeOfDay(23).night).toBe(1)
+  expect(timeOfDay(18.6).warm).toBeGreaterThan(0.9)
+
+  const day = meterSvg('cpu', 53, 12, false, timeOfDay(12))
+  const night = meterSvg('cpu', 53, 12, false, timeOfDay(23))
+  expect(day).toBe(meterSvg('cpu', 53, 12))
+  expect(night).not.toBe(day)
+  // the meadow-green glow turns lantern amber after dark
+  const glow = (svg: string) => /class="glow" stroke="(#[0-9a-f]{6})"/.exec(svg)?.[1]
+  expect(glow(day)).toBe('#8cc36b')
+  expect(glow(night)).not.toBe('#8cc36b')
 })

@@ -2,7 +2,7 @@ import { atom, read, update } from 'claude-code'
 import type { ElementConstructor, EngineInterface, Register, TextProps, Timer } from 'claude-code'
 
 import type { Gpu, Usage } from '../types'
-import { CELL as PIXEL, ROWS, cellsWide, meterSvg, segmentsFor, type Kind } from './pixel'
+import { CELL as PIXEL, ROWS, cellsWide, meterSvg, segmentsFor, timeOfDay, type Kind } from './pixel'
 import { FIND_NVIDIA, GPU_ARGV, PROC_SCRIPT, cpuPercent, parseGpus, parseProc, type ProcSample } from './sample'
 
 const PANE = 'system-monitor'
@@ -167,6 +167,9 @@ export const register: Register = on => {
     const { Svg } = $.ui.resolve(e)
     const perMeterPx = (e.props.bodyColumns * CELL_PX - 3 * CELL_PX * (list.length - 1)) / list.length - 6 * CELL_PX
     const segments = segmentsFor(perMeterPx)
+    // lit for the hour, like the weather scene: dimmer at night with a lantern-warm glow
+    const now = new Date(data.at)
+    const tod = timeOfDay(now.getHours() + now.getMinutes() / 60)
 
     return (
       <Box columnGap={3}>
@@ -176,7 +179,7 @@ export const register: Register = on => {
           return (
             <Box columnGap={1} alignItems="center">
               <Svg
-                source={meterSvg(kindOf(meter.label), meter.percent, segments, meter.isAsleep)}
+                source={meterSvg(kindOf(meter.label), meter.percent, segments, meter.isAsleep, tod)}
                 alt={`${meter.label} ${reading}`}
                 width={cellsWide(segments) * PIXEL}
                 height={ROWS * PIXEL}

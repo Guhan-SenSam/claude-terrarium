@@ -1,5 +1,5 @@
 // The band's look on surfaces that draw Svg: a pixel-art icon and a game-style bar of chunky
-// segments, in the palette of the thinking-weather scene. Still pictures, redrawn only when a
+// segments, in the palette of the thinking-weather scene, lit for the time of day like it. Still pictures, redrawn only when a
 // reading moves a segment or a glow step; nothing animates, so nothing redraws the band between
 // samples.
 
@@ -17,6 +17,40 @@ const TONES: Record<'calm' | 'busy' | 'hot', Tone> = {
   calm: { fill: '#5e9653', light: '#8cc36b', dark: '#3d6e36', glow: '#8cc36b' }, // meadow
   busy: { fill: '#c9a94a', light: '#ead27a', dark: '#9a7d2e', glow: '#ead27a' }, // wheat
   hot: { fill: '#e0703a', light: '#ffb070', dark: '#a8482a', glow: '#ffb347' }, // lantern
+}
+
+/**
+ * How far into night (0 day, 1 night) and how near dawn or dusk (0 to 1) an hour is, on the
+ * same clock as thinking-weather's sky: night from 20:00 to 05:00, day from 07:30 to 17:00.
+ */
+export type TimeOfDay = { night: number; warm: number }
+export function timeOfDay(hour: number): TimeOfDay {
+  const ramp = (a: number, b: number) => Math.min(1, Math.max(0, (hour - a) / (b - a)))
+  const night = hour < 5 ? 1 : hour < 7.5 ? 1 - ramp(5, 7.5) : hour < 17 ? 0 : hour < 20 ? ramp(17, 20) : 1
+  const warm = Math.max(0, 1 - Math.abs(hour - 6.3) / 1.2, 1 - Math.abs(hour - 18.6) / 1.2)
+  return { night, warm }
+}
+export const DAY: TimeOfDay = { night: 0, warm: 0 }
+
+function mix(a: string, b: string, t: number) {
+  const pa = parseInt(a.slice(1), 16)
+  const pb = parseInt(b.slice(1), 16)
+  const ch = (sh: number) => Math.round(((pa >> sh) & 255) + (((pb >> sh) & 255) - ((pa >> sh) & 255)) * t)
+  return '#' + ((ch(16) << 16) | (ch(8) << 8) | ch(0)).toString(16).padStart(6, '0')
+}
+
+/** The picture recoloured for the hour: warmer near dawn and dusk, dimmer at night, glow like a lantern. */
+function lightFor(svg: string, tod: TimeOfDay) {
+  if (tod.night === 0 && tod.warm === 0) return svg
+  return svg
+    .replace(/class="glow" stroke="(#[0-9a-f]{6})" stroke-opacity="([\d.]+)"/g, (_, c: string, o: string) =>
+      `class="glow" stroke="${mix(c, '#ffb347', 0.75 * tod.night)}" stroke-opacity="${Math.min(1, Number(o) * (1 + 0.4 * tod.night)).toFixed(2)}"`)
+    .replace(/(?<!class="glow" )stroke="(#[0-9a-f]{6})"/g, (_, c: string) => {
+      // only the lit colours take the sunset's warmth, so the dark frames keep their contrast
+      const n = parseInt(c.slice(1), 16)
+      const lum = (0.2126 * ((n >> 16) & 255) + 0.7152 * ((n >> 8) & 255) + 0.0722 * (n & 255)) / 255
+      return `stroke="${mix(mix(c, '#ffb27a', 0.22 * tod.warm * lum), '#141a2a', 0.35 * tod.night)}"`
+    })
 }
 
 export function toneOf(percent: number) {
@@ -112,7 +146,7 @@ export function segmentsFor(px: number) {
  * stepped pixel glow round its lit part, brighter in 10% steps as the reading rises. A sleeping
  * GPU is its icon dimmed, with a little "z".
  */
-export function meterSvg(kind: Kind, percent: number | undefined, segments: number, isAsleep = false) {
+export function meterSvg(kind: Kind, percent: number | undefined, segments: number, isAsleep = false, tod: TimeOfDay = DAY) {
   const w = cellsWide(segments)
   const parts: string[] = []
   const iconY = 1
@@ -131,8 +165,8 @@ export function meterSvg(kind: Kind, percent: number | undefined, segments: numb
       const gw = lit * (SEG + 1) + 1
       // nearer the bar brighter, the outer cells fainter, so it fades rather than ends in a line
       parts.push(
-        `<path stroke="${tone.glow}" stroke-opacity="${(strength * 0.5).toFixed(2)}" d="M${gx - 1} 1.5h${gw + 2}M${gx - 1} 10.5h${gw + 2}"/>`,
-        `<path stroke="${tone.glow}" stroke-opacity="${(strength * 0.2).toFixed(2)}" d="M${gx + 1} 0.5h${Math.max(1, gw - 2)}M${gx + 1} 11.5h${Math.max(1, gw - 2)}"/>`,
+        `<path class="glow" stroke="${tone.glow}" stroke-opacity="${(strength * 0.5).toFixed(2)}" d="M${gx - 1} 1.5h${gw + 2}M${gx - 1} 10.5h${gw + 2}"/>`,
+        `<path class="glow" stroke="${tone.glow}" stroke-opacity="${(strength * 0.2).toFixed(2)}" d="M${gx + 1} 0.5h${Math.max(1, gw - 2)}M${gx + 1} 11.5h${Math.max(1, gw - 2)}"/>`,
       )
     }
     // frame: a dark border with a darker well
@@ -161,5 +195,5 @@ export function meterSvg(kind: Kind, percent: number | undefined, segments: numb
     if (empty) parts.push(`<path stroke="#26324a" d="${emptyTop}"/><path stroke="#1f2a3e" d="${empty}"/>`)
   }
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${ROWS}" width="${w * CELL}" height="${ROWS * CELL}" fill="none" shape-rendering="crispEdges">${parts.join('')}</svg>`
+  return lightFor(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${ROWS}" width="${w * CELL}" height="${ROWS * CELL}" fill="none" shape-rendering="crispEdges">${parts.join('')}</svg>`, tod)
 }
