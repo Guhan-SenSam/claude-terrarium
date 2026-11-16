@@ -3,7 +3,7 @@
   "owner": {
     "name": "Guhan Sensam"
   },
-  "description": "The Claude Code mods Guhan uses: a system monitor, turn receipts and pinned replies",
+  "description": "The Claude Code mods Guhan uses: a system monitor, turn receipts, pinned replies and a weather background",
   "plugins": [
     {
       "name": "system-monitor",
@@ -16,6 +16,10 @@
     {
       "name": "pins",
       "source": "./plugins/pins"
+    },
+    {
+      "name": "thinking-weather",
+      "source": "./plugins/thinking-weather"
     }
   ]
 }

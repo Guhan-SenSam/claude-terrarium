@@ -1,0 +1,9 @@
+{
+  "name": "thinking-weather",
+  "version": "0.1.0",
+  "description": "A pixel-art valley behind the conversation whose weather follows Claude: storm clouds and rain while it works, lightning on every tool call, a lantern while it waits on you, and a day/night cycle on your clock",
+  "author": { "name": "Guhan Sensam" },
+  "license": "MIT",
+  "repository": "https://github.com/Guhan-SenSam/claude-mods",
+  "types": "./types/index.d.ts"
+}
