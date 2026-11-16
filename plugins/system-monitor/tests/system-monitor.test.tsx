@@ -69,54 +69,52 @@ async function started($: Parameters<TestBody>[0], on: On, gpuState = 'active') 
   return ran
 }
 
-test('the band is one row of short CPU, RAM and GPU bars', async ($, on) => {
+test('in the terminal the band is one row of short text bars', async ($, on) => {
   await started($, on)
 
-  for (const surface of ['terminal', 'desktop'] as const) {
-    const ui = await $.ui.mount({ ...BAND, surface })
-    // One Text per bar; its label is a Text of its own inside it.
-    const bar = async (label: string) => (await ui.find({ type: 'Text', text: new RegExp(`^${label} .*%$`) }))?.text
+  const ui = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  // One Text per bar; its label is a Text of its own inside it.
+  const bar = async (label: string) => (await ui.find({ type: 'Text', text: new RegExp(`^${label} .*%$`) }))?.text
 
-    expect(await bar('CPU')).toBe('CPU ████░░░░  53%')
-    expect(await bar('RAM')).toBe('RAM ██████░░  75%')
-    expect(await bar('GPU')).toBe('GPU ███░░░░░  37%')
-    expect(await ui.find({ type: 'Text', text: /chrome|TOP|\/mnt/ })).toBeUndefined()
-    await ui.unmount()
-  }
-})
-
-test('a narrow band drops the bars and keeps the numbers', async ($, on) => {
-  await started($, on)
-
-  const ui = await $.ui.mount({ ...BAND, surface: 'desktop', props: { ...BAND.props, bodyColumns: 36 } })
-  expect((await ui.find({ type: 'Text', text: /^CPU .*%$/ }))?.text).toBe('CPU   53%')
-  expect((await ui.find({ type: 'Text', text: /^GPU .*%$/ }))?.text).toBe('GPU   37%')
+  expect(await bar('CPU')).toBe('CPU ████░░░░  53%')
+  expect(await bar('RAM')).toBe('RAM ██████░░  75%')
+  expect(await bar('GPU')).toBe('GPU ███░░░░░  37%')
+  expect(await ui.find({ type: 'Text', text: /chrome|TOP|\/mnt/ })).toBeUndefined()
+  expect(await ui.find({ type: 'Svg' })).toBeUndefined()
   await ui.unmount()
 })
 
-test('each bar glows behind itself, brighter the higher it reads', async ($, on) => {
+test('on desktop each meter is a pixel-art icon and bar, then its reading', async ($, on) => {
   await started($, on)
 
   const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
-  const glows = (await ui.findAll({ type: 'Svg' })).map(svg => String(svg.props.source))
-  const opacity = (source: string) => Number(/opacity="([\d.]+)"\/><\/svg>/.exec(source)?.[1])
-
-  // CPU 53%, RAM 75%, GPU 37%: each in its own tone, the brightest the highest.
-  expect(glows.length).toBe(3)
-  expect(glows[0]).toContain('#22c55e')
-  expect(glows[1]).toContain('#f59e0b')
-  expect(glows[2]).toContain('#22c55e')
-  expect(opacity(glows[1]!)).toBeGreaterThan(opacity(glows[0]!))
-  expect(opacity(glows[0]!)).toBeGreaterThan(opacity(glows[2]!))
-  // Fixed, not animated: an animation would restart every 2 s with the numbers.
-  for (const source of glows) expect(source).not.toContain('<animate')
-  // Sized past the ~300 px an unsized frame gets, to its own bar.
-  for (const svg of await ui.findAll({ type: 'Svg' })) expect(svg.props.width).toBeGreaterThanOrEqual(17 * 8)
+  const svgs = await ui.findAll({ type: 'Svg' })
+  expect(svgs.map(svg => svg.props.alt)).toEqual(['CPU 53%', 'RAM 75%', 'GPU 37%'])
+  const sources = svgs.map(svg => String(svg.props.source))
+  // the weather palette: meadow green under 70%, wheat gold from 70%
+  expect(sources[0]).toContain('#5e9653')
+  expect(sources[1]).toContain('#c9a94a')
+  expect(sources[2]).toContain('#5e9653')
+  // the glow round the lit segments is brighter the higher the reading
+  const glow = (source: string) => Number(/stroke-opacity="([\d.]+)"/.exec(source)?.[1])
+  expect(glow(sources[1]!)).toBeGreaterThan(glow(sources[0]!))
+  expect(glow(sources[0]!)).toBeGreaterThan(glow(sources[2]!))
+  // still pictures, sized past the ~300 px frame an unsized Svg gets
+  for (const source of sources) expect(source).not.toContain('<animate')
+  for (const svg of svgs) expect(svg.props.width).toBeGreaterThanOrEqual(20)
+  for (const reading of ['53%', '75%', '37%']) expect((await ui.find({ type: 'Text', text: new RegExp(reading) }))?.text).toContain(reading)
   await ui.unmount()
+})
 
-  const terminal = await $.ui.mount({ ...BAND, surface: 'terminal' })
-  expect(await terminal.find({ type: 'Svg' })).toBeUndefined()
-  await terminal.unmount()
+test('a narrow band drops the bars and keeps the icons and numbers', async ($, on) => {
+  await started($, on)
+
+  const ui = await $.ui.mount({ ...BAND, surface: 'desktop', props: { ...BAND.props, bodyColumns: 36 } })
+  const svgs = await ui.findAll({ type: 'Svg' })
+  expect(svgs.length).toBe(3)
+  for (const svg of svgs) expect(String(svg.props.source)).not.toContain('#151d2e')
+  expect((await ui.find({ type: 'Text', text: /53%/ }))?.text).toContain('53%')
+  await ui.unmount()
 })
 
 test('the pane shows each bar with a detail line, on every surface', async ($, on) => {
@@ -151,11 +149,18 @@ test('a suspended GPU is left asleep, not woken by nvidia-smi', async ($, on) =>
   const ran = await started($, on, 'suspended')
 
   const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
-  expect((await ui.find({ type: 'Text', text: /^GPU/ }))?.text).toBe('GPU asleep')
-  // A sleeping GPU has no reading, so no glow: CPU and RAM only.
-  expect((await ui.findAll({ type: 'Svg' })).length).toBe(2)
+  // A sleeping GPU is its icon dimmed, with no reading and so no glow.
+  const gpu = (await ui.findAll({ type: 'Svg' }))[2]
+  expect(gpu?.props.alt).toBe('GPU asleep')
+  expect(String(gpu?.props.source)).toContain('opacity=".45"')
+  expect(String(gpu?.props.source)).not.toContain('stroke-opacity')
+  expect((await ui.find({ type: 'Text', text: /asleep/ }))?.text).toContain('asleep')
   expect(ran).not.toContain('nvidia-smi')
   await ui.unmount()
+
+  const terminal = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  expect((await terminal.find({ type: 'Text', text: /^GPU/ }))?.text).toBe('GPU asleep')
+  await terminal.unmount()
 })
 
 test('the band yields to a survey', async ($, on) => {

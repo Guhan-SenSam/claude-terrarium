@@ -2,6 +2,7 @@ import { atom, read, update } from 'claude-code'
 import type { ElementConstructor, EngineInterface, Register, TextProps, Timer } from 'claude-code'
 
 import type { Gpu, Usage } from '../types'
+import { CELL as PIXEL, ROWS, cellsWide, meterSvg, segmentsFor, type Kind } from './pixel'
 import { FIND_NVIDIA, GPU_ARGV, PROC_SCRIPT, cpuPercent, parseGpus, parseProc, type ProcSample } from './sample'
 
 const PANE = 'system-monitor'
@@ -14,8 +15,6 @@ const BAR = 8
 // and the clipping box around each background cuts what is left over.
 const CELL_PX = 8.5
 const LINE_PX = 20
-// The band's row is a little taller than a line; its glows are centred on it.
-const ROW_PX = 24
 
 // Change the tag when Usage's fields change: it declines what an earlier
 // version stored, which outlives a reload.
@@ -151,32 +150,43 @@ export const register: Register = on => {
     const label = labelWidth(list)
     const room = Math.floor((e.props.bodyColumns - 3 * (list.length - 1)) / list.length) - label - 5
     const cells = room >= 4 ? Math.min(BAR, room) : 0
-    const segment = (meter: Meter) => (
-      <Text mono wrap="truncate-end">
-        {meterRow(Text, meter, label, cells)}
-      </Text>
-    )
-    // The terminal has no Svg; elsewhere each bar glows by its own reading.
-    if (e.surface === 'terminal') return <Box columnGap={3}>{list.map(segment)}</Box>
+    // The terminal has no Svg: there each bar is text, `CPU ████░░░░  42%`.
+    if (e.surface === 'terminal') {
+      return (
+        <Box columnGap={3}>
+          {list.map(meter => (
+            <Text mono wrap="truncate-end">
+              {meterRow(Text, meter, label, cells)}
+            </Text>
+          ))}
+        </Box>
+      )
+    }
+    // Elsewhere each meter is a pixel-art icon and bar in the weather scene's palette, then its
+    // reading as text. Bars shrink, then go, when the prompt is narrow; the icons stay.
     const { Svg } = $.ui.resolve(e)
+    const perMeterPx = (e.props.bodyColumns * CELL_PX - 3 * CELL_PX * (list.length - 1)) / list.length - 6 * CELL_PX
+    const segments = segmentsFor(perMeterPx)
 
     return (
       <Box columnGap={3}>
-        {list.map(meter => (
-          <Box>
-            {meter.percent !== undefined && (
-              <Box position="absolute" top={0} left={0} right={0} bottom={0} overflow="hidden">
-                <Svg
-                  source={halo(meter.percent)}
-                  alt={`${meter.label} glow, brighter as it rises`}
-                  width={Math.ceil((label + cells + 5) * CELL_PX)}
-                  height={ROW_PX}
-                />
-              </Box>
-            )}
-            <Box position="relative">{segment(meter)}</Box>
-          </Box>
-        ))}
+        {list.map(meter => {
+          const reading = meter.isAsleep ? 'asleep' : meter.percent === undefined ? '…' : `${Math.round(meter.percent)}%`
+
+          return (
+            <Box columnGap={1} alignItems="center">
+              <Svg
+                source={meterSvg(kindOf(meter.label), meter.percent, segments, meter.isAsleep)}
+                alt={`${meter.label} ${reading}`}
+                width={cellsWide(segments) * PIXEL}
+                height={ROWS * PIXEL}
+              />
+              <Text mono dimColor={meter.isAsleep || meter.percent === undefined}>
+                {reading.padStart(4)}
+              </Text>
+            </Box>
+          )
+        })}
       </Box>
     )
   })
@@ -220,6 +230,10 @@ export const register: Register = on => {
       </Box>
     )
   })
+}
+
+function kindOf(label: string): Kind {
+  return label.startsWith('GPU') ? 'gpu' : label === 'RAM' ? 'ram' : 'cpu'
 }
 
 /** Labels padded to the longest, plus a space. */
@@ -273,26 +287,6 @@ function backdrop(level: Load) {
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 300" width="100" height="300" preserveAspectRatio="xMidYMid slice">' +
     '<defs><filter id="soft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="14"/></filter></defs>' +
     `<g filter="url(#soft)" opacity="0.16">${colors.map(blob).join('')}</g>` +
-    '</svg>'
-  )
-}
-
-const TONE_HEX = { success: '#22c55e', warning: '#f59e0b', error: '#ef4444' } as const
-
-/**
- * A soft ellipse behind one bar, in its tone's colour, brighter the higher
- * the reading. It fades out on every side, so no frame edge shows.
- */
-function halo(percent: number) {
-  const color = TONE_HEX[tone(percent)]
-  // 5% steps, so a reading that wobbles a little redraws nothing.
-  const opacity = (Math.round((0.06 + 0.5 * (clamp(percent) / 100)) * 20) / 20).toFixed(2)
-
-  return (
-    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100" preserveAspectRatio="none">' +
-    `<defs><radialGradient id="g" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="${color}" stop-opacity="1"/>` +
-    `<stop offset="0.55" stop-color="${color}" stop-opacity="0.55"/><stop offset="1" stop-color="${color}" stop-opacity="0"/></radialGradient></defs>` +
-    `<rect width="100" height="100" fill="url(#g)" opacity="${opacity}"/>` +
     '</svg>'
   )
 }
