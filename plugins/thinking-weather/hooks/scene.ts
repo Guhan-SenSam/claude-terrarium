@@ -1,5 +1,8 @@
-import { BANK_L, BANK_R, BANK_T, CHIMNEYS, GROUND, LAMPS, MILL, WINDOWS } from './art'
-import type { Sky, Strike } from '../types'
+import {
+  BANK_L, BANK_R, BANK_T, CHIMNEYS, FAIR, GROUND, GROUND_AUTUMN, GROUND_SNOW, GROUND_SPRING, GROUND_WINTER, LAMPS,
+  MILL, OVERCAST, WINDOWS,
+} from './art'
+import type { Cond, Outside, Season, Sky, Strike } from '../types'
 
 // A 320x180 grid of pixel cells, all vector (the desktop app strips embedded images).
 // Every animation is timed from `now` at draw time, so a scene the app restarts (a resize, a
@@ -138,11 +141,14 @@ const STARS = (() => {
   return `<path stroke="#cfd8ff" d="${d}"/><path stroke="#ffffff" stroke-opacity=".9" d="${bright}"/>`
 })()
 
-function sky(look: Look): string {
-  const stops = look.sky.map((c, i) => `<stop offset="${STOPS[i]}" stop-color="${c}"/>`).join('')
+function sky(look: Look, out: Outside): string {
+  const grey = GREY.has(out.cond)
+  const greyTo = mixHex('#a3acb8', '#1a1f2a', 1 - look.bright)
+  const haze = grey ? 0.6 : out.cond === 'fog' ? 0.4 : 0
+  const stops = look.sky.map((c, i) => `<stop offset="${STOPS[i]}" stop-color="${mixHex(c, greyTo, haze)}"/>`).join('')
   const h = look.h
   let bodies = ''
-  if (h > 5.4 && h < 19.6) {            // the sun arcs from the left at dawn to the right at dusk
+  if (!grey && h > 5.4 && h < 19.6) {     // the sun arcs from the left at dawn to the right at dusk
     const p = (h - 5.6) / (19.4 - 5.6)
     const x = Math.round(20 + 280 * p)
     const y = Math.round(140 - 112 * Math.sin(Math.PI * p))
@@ -151,7 +157,7 @@ function sky(look: Look): string {
     bodies += `<path stroke="${mixHex('#fff1a8', '#ff9a4a', low)}" stroke-opacity=".22" d="${disc(x, y, 11)}"/>` +
       `<path stroke="${mixHex('#ffe27a', '#ff8a3a', low)}" d="${disc(x, y, 7)}"/><path stroke="${core}" d="${disc(x - 1, y - 1, 5)}"/>`
   }
-  if (h > 18.8 || h < 6.6) {             // the moon crosses through the night
+  if (!grey && (h > 18.8 || h < 6.6)) {   // the moon crosses through the night
     const t = h > 18.8 ? h - 18.8 : h + 5.2
     const p = t / 11.8
     const x = Math.round(30 + 260 * p)
@@ -159,10 +165,57 @@ function sky(look: Look): string {
     bodies += `<path stroke="#e9eef9" stroke-opacity=".12" d="${disc(x, y, 9)}"/><path stroke="#dfe6f5" d="${disc(x, y, 5)}"/>` +
       `<path stroke="#b9c3d9" d="M${x - 2} ${y - 1}h2M${x + 1} ${y + 2}h1M${x - 1} ${y + 3}h1"/>`
   }
-  const stars = look.stars > 0.02 ? `<g opacity="${look.stars.toFixed(2)}">${STARS}</g>` : ''
+  const stars = !grey && look.stars > 0.02 ? `<g opacity="${look.stars.toFixed(2)}">${STARS}</g>` : ''
+  const lit = `style="filter:brightness(${Math.max(0.35, look.bright).toFixed(2)})"`
+  const clouds = grey ? `<g ${lit}>${OVERCAST}</g>` : out.cond === 'partly' ? `<g ${lit}>${FAIR}</g>` : ''
   return `<linearGradient id="skyg" x1="0" y1="0" x2="0" y2="1">${stops}</linearGradient>` +
-    `<rect y="-1" width="320" height="162" fill="url(#skyg)"/>${stars}${bodies}`
+    `<rect y="-1" width="320" height="162" fill="url(#skyg)"/>${stars}${bodies}${clouds}`
 }
+
+// ---- the real weather outside, when Claude is not bringing its own storm ----
+const GREY = new Set<Cond>(['overcast', 'rain', 'snow', 'thunder'])
+const GROUNDS: Record<Season, string> = { spring: GROUND_SPRING, summer: GROUND, autumn: GROUND_AUTUMN, winter: GROUND_WINTER }
+
+// Light rain across the whole valley, and snowflakes; both step on the half-second clock.
+const WIDE_RAIN = (() => {
+  const r = rng(21)
+  let d = ''
+  for (let i = 0; i < 120; i++) d += `M${Math.floor(r() * 320) + 0.5} ${Math.floor(r() * 170) - 8}v2`
+  return d
+})()
+const FLAKES = (() => {
+  const r = rng(5)
+  let d = ''
+  for (let i = 0; i < 110; i++) d += `M${Math.floor(r() * 320)} ${Math.floor(r() * 176) - 16}h1`
+  return d
+})()
+
+function outside(out: Outside, look: Look, now: number, stormRain: boolean): string {
+  let s = ''
+  if ((out.cond === 'rain' || out.cond === 'thunder') && !stormRain) {
+    s += `<path class="rain" stroke="#b8c8de" stroke-opacity=".4" d="${WIDE_RAIN}"/>`
+  }
+  if (out.cond === 'snow') {
+    s += `<path class="flakes" style="animation-delay:${-(now % 4000)}ms" stroke="#f4f8fd" stroke-opacity="${(0.55 + 0.4 * look.bright).toFixed(2)}" d="${FLAKES}"/>`
+  }
+  if (out.cond === 'thunder') {
+    s += `<rect class="far" style="animation-delay:${-(now % 8000)}ms" y="-1" width="320" height="182" fill="#dfe6ff"/>`
+  }
+  return s
+}
+
+// Fog: a soft bank of mist lying over the low ground, thickest just above the fields.
+function fog(look: Look): string {
+  const c = mixHex('#e3e8ee', '#3a4250', 1 - look.bright)
+  return `<linearGradient id="fogg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${c}" stop-opacity="0"/>` +
+    `<stop offset=".45" stop-color="${c}" stop-opacity=".55"/><stop offset=".7" stop-color="${c}" stop-opacity=".4"/>` +
+    `<stop offset="1" stop-color="${c}" stop-opacity=".15"/></linearGradient><rect y="100" width="320" height="81" fill="url(#fogg)"/>`
+}
+
+const OUTSIDE_CSS = `.flakes{animation:flakes 4s steps(8) infinite}
+@keyframes flakes{0%{transform:translate(0,0)}50%{transform:translate(2px,8px)}100%{transform:translate(0,16px)}}
+.far{opacity:0;animation:far 8s steps(1) infinite}
+@keyframes far{0%{opacity:.16}6%{opacity:0}12%{opacity:.08}18%,100%{opacity:0}}`
 
 // ---- the town's live parts. Every loop steps on one shared half-second clock (its delay is
 // `now` modulo its length, and stagger is whole steps), so the scene redraws twice a second at most.
@@ -263,8 +316,13 @@ function glide(name: string, axis: 'X' | 'Y', dist: number): string {
   return `@keyframes ${name}-in{${frames(EASE, OFF)}}@keyframes ${name}-out{${frames(outMarks, outOffs)}}`
 }
 
-export function scene(s: Sky, now: number, hour: number): string {
+export const CLEAR_SUMMER: Outside = { cond: 'clear', season: 'summer', snowCover: false }
+
+export function scene(s: Sky, now: number, hour: number, out: Outside = CLEAR_SUMMER): string {
   const look = lookAt(hour)
+  // an overcast day is dimmer on the ground too
+  const ground = out.snowCover ? GROUND_SNOW : GROUNDS[out.season]
+  const dull = GREY.has(out.cond) || out.cond === 'fog' ? 0.85 : 1
   const stormy = s.mode === 'working' || s.mode === 'waiting'
   const modeAge = Math.max(0, now - s.modeSince)
   const stormAge = Math.max(0, now - s.stormSince)
@@ -299,6 +357,7 @@ ${glide('bl', 'X', -100)}
 ${glide('br', 'X', 100)}
 ${glide('bt', 'Y', -60)}
 ${TOWN_CSS}
+${OUTSIDE_CSS}
 @keyframes dim-in{from{opacity:0}to{opacity:1}}
 @keyframes dim-out{from{opacity:1}to{opacity:0}}
 .rain{animation:rain 1.5s steps(3) -${now % 1500}ms infinite}
@@ -313,19 +372,19 @@ ${TOWN_CSS}
 .beams{opacity:0;animation:beams 20s steps(20) both}
 @keyframes beams{0%{opacity:0}15%{opacity:.22}70%{opacity:.18}100%{opacity:0}}
 </style><svg viewBox="0 -.5 320 180" preserveAspectRatio="xMidYMax slice">
-${sky(look)}
-${rain}${banks}
+${sky(look, out)}
+${outside(out, look, now, s.mode === 'working')}${rain}${banks}
 ${beams}${bolts}
-<g style="filter:brightness(${look.bright.toFixed(2)}) saturate(${look.sat.toFixed(2)}) sepia(${look.warm.toFixed(2)})">${GROUND}</g>
-${lantern}${town(look, now, s.mode === 'waiting')}
+<g style="filter:brightness(${(look.bright * dull).toFixed(2)}) saturate(${(look.sat * dull).toFixed(2)}) sepia(${look.warm.toFixed(2)})">${ground}</g>
+${lantern}${town(look, now, s.mode === 'waiting')}${out.cond === 'fog' ? fog(look) : ''}
 </svg></svg>`
 
   // newest bolts first; a crowded burst drops its oldest so the scene stays under the app's limit
   let n = strikes.length
-  let out = build(strikes.map(st => bolt(st, now - st.t)).join(''))
-  while (out.length > LIMIT && n > 0) {
+  let svg = build(strikes.map(st => bolt(st, now - st.t)).join(''))
+  while (svg.length > LIMIT && n > 0) {
     n--
-    out = build(strikes.slice(0, n).map(st => bolt(st, now - st.t)).join(''))
+    svg = build(strikes.slice(0, n).map(st => bolt(st, now - st.t)).join(''))
   }
-  return out
+  return svg
 }

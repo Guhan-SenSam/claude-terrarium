@@ -311,6 +311,7 @@ for row, (yc, rmin, rmax, z) in enumerate([(4, 16, 24, 0), (24, 14, 21, 10), (44
             deck.append((x, yc + rng.uniform(-3, 3), r, z + rng.uniform(0, 4), yc + r * 0.55, 1.9, rng.uniform(0, 6.3)))
         x += r * rng.uniform(1.1, 1.5)
 puffs(clouds, deck, light=(-0.4, -0.9, 0.4), ambient=0.25, bands=[0.4, 0.62, 0.82])
+deck_cells = clouds.a.copy()
 items = []
 for base, sc, z in [(104, 1.1, 0), (140, 1.25, 40)]:
     x = -30 + rng.uniform(0, 20)
@@ -630,7 +631,134 @@ for y in range(154, 168):
     gput(267, y, '#1b1b22')
 gput(266, 154, '#1b1b22'); gput(268, 154, '#1b1b22')
 
-frag = {'SKY': SKY, 'BANK_L': emit_safe(bank_l), 'BANK_R': emit_safe(bank_r), 'BANK_T': emit_safe(bank_t), 'GROUND': emit_safe(ground)}
+# ---- seasons and real-weather skies. Everything below draws after the summer ground, on its own
+# random stream, so the town and fields keep the same layout in every season. ----
+rng = random.Random(2026)
+
+
+def variant(remap, extra=None):
+    """A copy of the summer ground with colours swapped (None removes a cell), then `extra`."""
+    v = Layer(list(ground.pal))
+    v.a = ground.a.copy()
+    for old, new in remap.items():
+        if old not in ground.pal:
+            continue
+        i = ground.pal.index(old)
+        if new is None:
+            v.a[v.a == i] = -1
+        else:
+            if new not in v.pal:
+                v.pal.append(new)
+            v.a[v.a == i] = v.pal.index(new)
+    if extra:
+        extra(v)
+    return v
+
+
+def vput(v, x, y, col):
+    if col not in v.pal:
+        v.pal.append(col)
+    v.put(x, y, v.pal.index(col))
+
+
+TREE = ['#0e2418', '#173522', '#21492b', '#2f6135', '#447a3e']
+MEADOW_C = ['#5d9a4c', '#4f8a43', '#437a3b', '#376a33', '#2b5a2b']
+WHEAT = ['#c9a94a', '#b39445', '#d8bb5c']
+GREENS = ['#6a9a4f', '#7ea852', '#557f42', '#89b05a', '#4f7a3f', '#a7c066']
+FLOWERS = ['#f4d35e', '#ffffff', '#e86a8a', '#b48ae8']
+ROOFS_ALL = ['#7a3a32', '#5a3a3a', '#3e4a63', '#a95a3a', '#6b4b3a', '#4a2a22',
+             '#5c2a24', '#432a2a', '#2e374a', '#523829', '#86452c', '#3a201a']
+
+
+def more_flowers(v):
+    for _ in range(90):
+        x, y = rng.randrange(W), rng.randrange(HORIZON + 22, H)
+        if v.a[y, x] >= 0 and v.pal[v.a[y, x]] in MEADOW_C + ['#7fbf5a', '#6aae4c', '#5a9a44', '#4a8a3c', '#3c7a34']:
+            vput(v, x, y, rng.choice(['#f2b8d0', '#ffffff', '#f4d35e', '#e86a8a']))
+
+
+spring = variant({
+    TREE[4]: '#f2b8d0', TREE[3]: '#5e9653',                 # blossom on the crowns
+    WHEAT[0]: '#8cc36b', WHEAT[1]: '#7ea852', WHEAT[2]: '#9fd07a',   # young crops
+    MEADOW_C[0]: '#7fbf5a', MEADOW_C[1]: '#6aae4c', MEADOW_C[2]: '#5a9a44', MEADOW_C[3]: '#4a8a3c', MEADOW_C[4]: '#3c7a34',
+}, more_flowers)
+
+
+def leaves(v):
+    for _ in range(60):
+        x, y = rng.randrange(W), rng.randrange(HORIZON + 20, H)
+        if v.a[y, x] >= 0:
+            vput(v, x, y, rng.choice(['#d27a2a', '#a8481c', '#f0b04a']))
+
+
+autumn = variant({
+    TREE[0]: '#3a1a10', TREE[1]: '#6a2a14', TREE[2]: '#a8481c', TREE[3]: '#d27a2a', TREE[4]: '#f0b04a',
+    GREENS[0]: '#9a7a3e', GREENS[1]: '#b08a44', GREENS[2]: '#7a6034', GREENS[3]: '#a8904a', GREENS[4]: '#6a5230', GREENS[5]: '#c0a050',
+    MEADOW_C[0]: '#8a9a4a', MEADOW_C[1]: '#7a8a42', MEADOW_C[2]: '#6a7a3a', MEADOW_C[3]: '#5a6a32', MEADOW_C[4]: '#4a5a2a',
+    '#76b05a': '#b0a050', '#3d7a36': '#6a6a30',
+    '#b48ae8': '#d27a2a', '#e86a8a': '#a8481c', '#ffffff': '#f0b04a',
+}, leaves)
+
+MILD = {   # a winter with no snow: dull greens, browned fields, bare-looking trees
+    TREE[3]: '#4a5a3a', TREE[4]: '#6a6a48', TREE[2]: '#3a4a30',
+    GREENS[0]: '#7a7a4a', GREENS[1]: '#8a8450', GREENS[3]: '#8a8a58', GREENS[5]: '#9a9460',
+    WHEAT[0]: '#8a7448', WHEAT[1]: '#7a6640', WHEAT[2]: '#9a8454',
+    MEADOW_C[0]: '#6a7a4a', MEADOW_C[1]: '#5e6e44', MEADOW_C[2]: '#52623c', MEADOW_C[3]: '#465634', MEADOW_C[4]: '#3a4a2c',
+    '#76b05a': '#8a8a5a', '#f4d35e': '#5e6e44', '#e86a8a': '#52623c', '#b48ae8': '#5e6e44', '#ffffff': '#6a7a4a',
+}
+winter = variant(MILD)
+
+SNOW = ['#f4f8fd', '#e6eef7', '#d6e2ef', '#c6d4e6', '#b6c7de']
+
+
+def snow_on_top(v):
+    """Snow on every roof, crown and hedge cell that has open sky above it, and deeper on peaks."""
+    caps = set(ROOFS_ALL + ['#1f3a35', '#2a4a2c', '#3e4a63', '#d8cfbd', '#2a1f1a'])
+    h, w = v.a.shape
+    orig = v.a.copy()
+    for x in range(w):
+        for y in range(1, h):
+            i = orig[y, x]
+            above = orig[y - 1, x]
+            if i >= 0 and v.pal[i] in caps and (above < 0 or v.pal[above] not in caps):
+                vput(v, x, y, SNOW[0])
+        col = v.a[:, x]
+        top = next((y for y in range(h) if col[y] >= 0), None)
+        if top is not None and top < HORIZON - 8:
+            for y in range(top, min(top + 7, HORIZON - 6)):
+                if v.pal[v.a[y, x]] in ('#6a86ad', '#7d97bb', '#7f9cc0', '#e2ecf7', '#c7d6ea'):
+                    vput(v, x, y, SNOW[1] if (x + y) % 5 else SNOW[2])
+
+
+snowy = variant({
+    TREE[0]: '#14282a', TREE[1]: '#1f3a35', TREE[2]: '#1f3a35', TREE[3]: '#e6eef7', TREE[4]: '#f4f8fd',
+    **{g: SNOW[1] for g in GREENS}, WHEAT[0]: SNOW[0], WHEAT[1]: SNOW[1], WHEAT[2]: SNOW[0],
+    MEADOW_C[0]: SNOW[0], MEADOW_C[1]: SNOW[1], MEADOW_C[2]: SNOW[2], MEADOW_C[3]: SNOW[3], MEADOW_C[4]: SNOW[4],
+    '#76b05a': '#c6d4e6', '#3d7a36': '#b6c7de', '#2a4a2c': '#4a5a6a',
+    '#9fd3f3': '#d4e6f4', '#6fb3e6': '#b9d3ea', '#e6f6ff': '#ffffff',             # ice
+    '#8b7558': '#c9c0b2', '#74604a': '#b8ae9e', '#a39377': '#d8d0c4',            # snowy path
+    '#4f7a3f': SNOW[1], '#2f6135': '#e6eef7', '#21492b': '#1f3a35',
+    '#f4d35e': SNOW[1], '#e86a8a': SNOW[2], '#b48ae8': SNOW[1],
+}, snow_on_top)
+
+# ---- skies: a few fair-weather clouds, and a grey overcast deck ----
+fair = Layer(['#5d9fd8', '#86bfea', '#b6dcf6', '#e2f4fd', '#ffffff'])
+fitems = []
+fitems += cumulus(62, 70, 60, [(0, 20, 14), (12, 12, 10)], rscale=0.8)
+fitems += cumulus(182, 52, 46, [(0, 14, 11)], rscale=0.7)
+fitems += cumulus(268, 82, 64, [(-8, 22, 14), (14, 14, 10)], rscale=0.8)
+fitems += streak(120, 26, 50, 1.8)
+puffs(fair, fitems, bands=[0.25, 0.45, 0.65, 0.85])
+overcast = Layer(['#7d8796', '#959fad', '#adb6c2', '#c5ccd5'])
+overcast.a = np.where(deck_cells >= 0, np.minimum(np.maximum(deck_cells - 1, 0), 3), -1)
+# fill the deck's blue gaps so the blanket is whole
+for y in range(0, 72):
+    for x in range(W):
+        if overcast.a[y, x] < 0 and y < 66:
+            overcast.a[y, x] = 0
+
+
+frag = {'SKY': SKY, 'BANK_L': emit_safe(bank_l), 'BANK_R': emit_safe(bank_r), 'BANK_T': emit_safe(bank_t), 'GROUND': emit_safe(ground), 'GROUND_SPRING': emit_safe(spring), 'GROUND_AUTUMN': emit_safe(autumn), 'GROUND_WINTER': emit_safe(winter), 'GROUND_SNOW': emit_safe(snowy), 'FAIR': emit_safe(fair), 'OVERCAST': emit_safe(overcast)}
 lines = ['// Generated by tools/gen_art.py: vector pixel-art layers (320x180). Do not edit.',
          '// Seam handling follows the method of BackdropKit (MIT, github.com/winchxyz/backdropkit).']
 for k, v in frag.items():
@@ -653,7 +781,7 @@ for y in range(H):
             break
 skyimg[..., 3] = 255
 base = Image.fromarray(skyimg)
-for name, layers in (('clear', [clouds, ground]), ('storm', [clouds, storm, ground])):
+for name, layers in (('summer', [ground]), ('spring', [fair, spring]), ('autumn', [fair, autumn]), ('winter', [overcast, winter]), ('snow', [overcast, snowy])):
     im = base.copy()
     for l in layers:
         im = Image.alpha_composite(im, Image.fromarray(l.rgba()))

@@ -1,9 +1,19 @@
 {
   "name": "thinking-weather",
-  "version": "0.1.0",
-  "description": "A pixel-art valley behind the conversation whose weather follows Claude: storm clouds and rain while it works, lightning on every tool call, a lantern while it waits on you, and a day/night cycle on your clock",
-  "author": { "name": "Guhan Sensam" },
+  "version": "0.2.0",
+  "description": "A pixel-art valley behind the conversation whose weather follows Claude: storm clouds and rain while it works, lightning on every tool call, a lantern while it waits on you, a day/night cycle, the seasons, and your town's real weather",
+  "author": {
+    "name": "Guhan Sensam"
+  },
   "license": "MIT",
   "repository": "https://github.com/Guhan-SenSam/claude-mods",
-  "types": "./types/index.d.ts"
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "place": {
+      "type": "string",
+      "title": "Town for real weather",
+      "description": "The sky follows the real weather here (looked up on Open-Meteo; only the town's rounded coordinates are sent after the first lookup). Leave empty for a clear sky. \"Town, Region\" picks among towns of the same name.",
+      "default": ""
+    }
+  }
 }
