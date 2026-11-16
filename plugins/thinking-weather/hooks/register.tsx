@@ -45,7 +45,12 @@ const LOOK: ThemeSetArgs = {
   backdrop: { scene: 'weather', glass: { blur: 6, opacity: 0.5 } },
 }
 
-const BATCH_MS = 350
+const BATCH_MS = 200
+// each strike gets its own moment, one after another, so a burst of tool calls reads as a burst
+// of lightning rather than one flash; a backlog longer than this is dropped
+const STRIKE_GAP_MS = 180
+const BACKLOG_MS = 2500
+let lastSlot = 0
 const KEEP_MS = 1500
 const DONE_MS = 20000
 
@@ -118,7 +123,13 @@ const NOBODY_ASKED = new Set(['auto', 'bypassPermissions', 'dontAsk'])
 
 async function write($: EngineInterface, mode?: Mode) {
   const now = await $.clock.now()
-  const fresh = pending
+  const fresh: Strike[] = []
+  for (const st of pending) {
+    const slot = Math.max(now, lastSlot + STRIKE_GAP_MS)
+    if (slot - now > BACKLOG_MS) break
+    lastSlot = slot
+    fresh.push({ ...st, t: slot })
+  }
   pending = []
   await update($, sky, prev => {
     const s = prev ?? INITIAL
@@ -130,7 +141,7 @@ async function write($: EngineInterface, mode?: Mode) {
       next.modeSince = now
       if (isStormy && !wasStormy) next.stormSince = now
     }
-    next.strikes = [...s.strikes, ...fresh].filter(st => now - st.t < KEEP_MS)
+    next.strikes = [...s.strikes, ...fresh].filter(st => now - st.t < KEEP_MS).slice(-24)
     return next
   })
 }
@@ -142,7 +153,7 @@ function flushSoon($: EngineInterface) {
     flushing = false
     void write($).then(() => {
       // one more pass to drop strikes that have finished
-      $.clock.after(KEEP_MS, () => void write($))
+      void $.clock.now().then(now => $.clock.after(Math.max(0, lastSlot - now) + KEEP_MS, () => void write($)))
     })
   })
 }

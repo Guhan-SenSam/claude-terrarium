@@ -231,3 +231,16 @@ test('a sudden fall in the context counts as a compaction and brings the fog', a
   await measure(9)
   expect((await svg()).includes('id="fogg"')).toBe(true)
 })
+
+test('a burst of commands strikes one bolt each, one after another', async ($, on) => {
+  const clock = engine(on, Date.now())
+  on('command.run', () => ({ text: 'ran' }))
+  const view = await $.ui.mount(BACKDROP)
+  for (let i = 0; i < 5; i++) await $.command.run({ command: 'help', args: '' } as never)
+  await clock.advance(250)
+  const svg = String((await view.find({ type: 'Svg' }))?.props.source ?? '')
+  const delays = [...svg.matchAll(/class="bolt" style="animation-delay:(-?\d+)ms"/g)].map(m => Number(m[1]))
+  expect(delays.length).toBe(5)
+  expect(new Set(delays).size).toBe(5) // each its own moment, not one flash
+  expect(svg.includes('steps(1) forwards')).toBe(true) // the ones still waiting stay dark
+})

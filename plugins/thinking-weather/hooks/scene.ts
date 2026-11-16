@@ -15,7 +15,8 @@ import type { Cond, Era, Holiday, Outside, Season, SessionEvents, Sky, Strike } 
 // state change) carries on where its motion was instead of starting over.
 
 const STRIKE_MS = 900
-const MAX_BOLTS = 6
+// enough for the strikes playing now and the queue waiting behind them
+const MAX_BOLTS = 16
 const LIMIT = 130000
 // Where the storm clouds sit (gen_vec.py: corner masses and TOP_CLUMPS 90/170/250):
 // bolts start from these cloud bases and rain falls only beneath them.
@@ -666,7 +667,7 @@ export function scene(s: Sky, now: number, hour: number, out: Outside = CLEAR_SU
     : ''
   const strikes = s.strikes
     .filter(st => now - st.t < STRIKE_MS)
-    .sort((a, b) => b.t - a.t)
+    .sort((a, b) => a.t - b.t)
     .slice(0, MAX_BOLTS)
   // rain waits until the clouds are most of the way in (about 4 s of their 6 s roll)
   // a long turn's storm grows: after two minutes heavier rain, after five the sky darker still
@@ -697,7 +698,8 @@ ${EVENTS_CSS}
 .rain{stroke-dasharray:2 ${RAIN_GAP - 2};animation:rain ${RAIN_MS}ms steps(${RAIN_GAP / 2}) -${now % RAIN_MS}ms infinite}
 @keyframes rain{from{stroke-dashoffset:0}to{stroke-dashoffset:-${RAIN_GAP}}}
 @keyframes rain-in{0%{opacity:0}70%,100%{opacity:1}}
-.bolt,.flash{opacity:0;animation:strike ${STRIKE_MS}ms steps(1) both}
+/* forwards, not both: a strike waiting for its moment stays dark until then */
+.bolt,.flash{opacity:0;animation:strike ${STRIKE_MS}ms steps(1) forwards}
 .flash{animation-name:flash}
 @keyframes strike{0%{opacity:1}12%{opacity:0}22%{opacity:1}40%{opacity:.6}55%,100%{opacity:0}}
 @keyframes flash{0%{opacity:.22}8%{opacity:0}22%{opacity:.12}30%,100%{opacity:0}}
@@ -713,7 +715,7 @@ ${beams}${bolts}
 ${lantern}${town(look, now, s.mode === 'waiting', era)}${out.cond === 'fog' ? fog(look) : ''}${holiday(out.holiday, look, now, era)}${shimmer(out, now)}${compactFog(ev, now, look)}
 </svg></svg>`
 
-  // newest bolts first; a crowded burst drops its oldest so the scene stays under the app's limit
+  // soonest bolts first; a crowded burst drops the last of its queue so the scene stays under the app's limit
   let n = strikes.length
   let svg = build(strikes.map(st => bolt(st, now - st.t, era === 'scifi')).join(''))
   while (svg.length > LIMIT && n > 0) {

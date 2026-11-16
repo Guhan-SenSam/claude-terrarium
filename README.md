@@ -27,11 +27,11 @@ The background tells you what the session is doing without reading a word of it.
 | **Claude working:** storm clouds glide in, rain falls once they arrive, and every tool call or slash command strikes lightning. A failed call strikes red; each subagent flies a kite. | **The future's storm:** in the sci-fi era the storm is an ion storm, with violet clouds and neon lightning. |
 
 **Society follows the context.** A fresh conversation is a Stone Age settlement. Society moves
-up an era for each fifth of the context window, and near a full context the valley is a sci-fi
-city. When the conversation is compacted, fog rolls in and society falls back to the Stone Age
+up an era for each fifth of the context window, through a village, an industrial town and a
+modern city, and near a full context the valley is a sci-fi city. When the conversation is compacted, fog rolls in and society falls back to the Stone Age
 behind it.
 
-![Stone Age, then the village, then the sci-fi city, then fog, then the Stone Age again](docs/images/eras.gif)
+![Stone Age, then the village, the industrial town, the modern city and the sci-fi city, then fog, then the Stone Age again](docs/images/eras.gif)
 
 **The world outside.** The sky follows your local clock, with dawn and dusk at your town's real
 sunrise and sunset and the moon in its real phase. The land follows the seasons. Set a town and the
@@ -41,8 +41,9 @@ idle sky follows its real weather: clear, a few clouds, overcast, rain, snow, fo
 
 | | | |
 |---|---|---|
-| ![Stone Age huts and a mammoth](docs/images/stone-age.png) | ![The village at an autumn dusk](docs/images/village-dusk.png) | ![The sci-fi city by day](docs/images/scifi-day.png) |
-| ![Spring with a few clouds](docs/images/spring-clouds.png) | ![Christmas lights in the snow at night](docs/images/christmas-snow.png) | ![Pumpkins glowing at Halloween](docs/images/halloween.png) |
+| ![Stone Age huts and a mammoth](docs/images/stone-age.png) | ![The village at an autumn dusk](docs/images/village-dusk.png) | ![The industrial town in autumn: mill stacks, a steam train and brick terraces](docs/images/industrial.png) |
+| ![The modern city at night: lit towers, wind turbines and pylons](docs/images/modern-night.png) | ![The sci-fi city by day](docs/images/scifi-day.png) | ![Spring with a few clouds](docs/images/spring-clouds.png) |
+| ![Fog over the village on an autumn morning](docs/images/fog-morning.png) | ![Christmas lights in the snow at night](docs/images/christmas-snow.png) | ![Pumpkins glowing at Halloween](docs/images/halloween.png) |
 
 It also marks git commits with fireworks, compaction with fog, and Halloween, December, New Year's
 Eve and the Fourth of July with decorations. On the desktop the working row becomes a little pixel
