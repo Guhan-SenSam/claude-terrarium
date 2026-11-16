@@ -20,6 +20,6 @@ export type Sky = {
 
 declare module 'claude-code' {
   interface PluginState {
-    'thinking-weather': { sky: Sky; report: Report | null }
+    'thinking-weather': { sky: Sky; report: Report | null; tick: number }
   }
 }

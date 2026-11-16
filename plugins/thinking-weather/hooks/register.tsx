@@ -3,11 +3,16 @@ import type { EngineInterface, PluginOptions, Register, ThemeSetArgs } from 'cla
 
 import type { Cond, Mode, Outside, Report, Season, Sky, Strike } from '../types'
 import { scene } from './scene'
+import { ICON_PX, spinnerSvg } from './spinner'
 import { fetchReport, seasonOf } from './outside'
 
 const INITIAL: Sky = { mode: 'idle', modeSince: 0, stormSince: 0, strikes: [], at: 0 }
 const sky = atom({ plugin: 'thinking-weather', key: 'sky' } as const, INITIAL)
 const report = atom({ plugin: 'thinking-weather', key: 'report' } as const, null)
+// A second's tick while a turn runs, read only by the working row: it redraws that row's
+// elapsed time without redrawing the background.
+const tick = atom({ plugin: 'thinking-weather', key: 'tick' } as const, 0)
+let tickTimer: { cancel: () => void } | undefined
 
 const LOOK: ThemeSetArgs = {
   backdrop: { scene: 'weather', glass: { blur: 6, opacity: 0.5 } },
@@ -241,6 +246,8 @@ export const register: Register = (on, options: PluginOptions) => {
   on('turn.start', async ($, e, next) => {
     if (e.agentId !== undefined) return next(e)
     await write($, 'working')
+    tickTimer?.cancel()
+    tickTimer = $.clock.every(1000, () => void $.clock.now().then(now => update($, tick, () => now)))
     return next(e)
   })
 
@@ -282,6 +289,8 @@ export const register: Register = (on, options: PluginOptions) => {
 
   on('turn.complete', async ($, e, next) => {
     if (e.agentId !== undefined) return next(e)
+    tickTimer?.cancel()
+    tickTimer = undefined
     await write($, 'done')
     const since = (await read($, sky)).modeSince
     $.clock.after(DONE_MS, () => {
@@ -352,6 +361,26 @@ export const register: Register = (on, options: PluginOptions) => {
   on('command.run', { command: 'weather-off' }, async ($, e, next) => {
     await $.theme.clear()
     return { text: 'Weather cleared. /reload-plugins or a new session brings it back.' }
+  })
+
+  // The working row on desktop: a pixel storm cloud doing what the turn does, the step's words,
+  // and the time the turn has run. Other surfaces keep their own line.
+  on('ui.render', { component: 'Spinner' }, async ($, e, next) => {
+    if (e.surface !== 'desktop') return next(e)
+    const ticked = await read($, tick)
+    const s = await read($, sky)
+    const now = Math.max(ticked, s.at)
+    const secs = s.stormSince > 0 ? Math.max(0, Math.round((now - s.stormSince) / 1000)) : 0
+    const elapsed = secs >= 60 ? `${Math.floor(secs / 60)}m ${secs % 60}s` : `${secs}s`
+    const words = (e.props.message ?? e.props.word) + e.props.suffix
+    const { Box, Svg, Text } = $.ui.resolve(e)
+    return (
+      <Box flexDirection="row" alignItems="center" columnGap={1}>
+        <Svg source={spinnerSvg(e.props.mode, Date.now())} alt={`A little storm cloud, ${e.props.mode}`} width={ICON_PX.width} height={ICON_PX.height} isInteractive />
+        <Text>{words}</Text>
+        <Text dimColor>{elapsed}</Text>
+      </Box>
+    )
   })
 
   on('ui.render', { component: 'Backdrop' }, async ($, e, next) => {

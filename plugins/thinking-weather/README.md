@@ -12,6 +12,11 @@ what Claude is doing.
   road blinks.
 - **Turn done:** the clouds roll back out and sunbeams break through for a while.
 
+While Claude works, the desktop's working row shows a little pixel storm cloud in place of the
+orb, doing what the turn does: billowing while it thinks, dots lighting in turn while a request
+goes out, lightning while a tool runs, rain while the reply is written. Beside it, what the step
+is doing and how long the turn has run.
+
 The sky follows your local clock: dawn, day, dusk and night blend into each other, the sun and
 moon cross the sky, stars come out, and after dark the town's windows, streetlamps and lantern
 glow. By day birds cross the sky; at night fireflies blink in the meadow; chimneys smoke, the

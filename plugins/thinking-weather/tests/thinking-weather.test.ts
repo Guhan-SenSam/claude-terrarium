@@ -99,3 +99,18 @@ test('with a place set, the town is looked up once and then only rounded coordin
   const svg = String((await view.find({ type: 'Svg' }))?.props.source ?? '')
   expect(svg.includes('class="rain"')).toBe(true) // it is raining in Springfield
 })
+
+test('on desktop the working row is a pixel storm cloud, the step and the time; elsewhere it is left alone', async ($, on) => {
+  engine(on)
+  const props = { word: 'Creating notes.md', message: null, suffix: '…', mode: 'tool-use' } as const
+  const row = await $.ui.mount({ plugin: 'thinking-weather', component: 'Spinner', props, surface: 'desktop' })
+  const svg = await row.find({ type: 'Svg' })
+  expect(String(svg?.props.alt)).toContain('tool-use')
+  expect(String(svg?.props.source)).toContain('#57508a')
+  expect((await row.find({ type: 'Text', text: /Creating notes\.md…/ }))?.text).toBe('Creating notes.md…')
+  await row.unmount()
+
+  const terminal = await $.ui.mount({ plugin: 'thinking-weather', component: 'Spinner', props, surface: 'terminal' })
+  expect(await terminal.find({ type: 'Svg' })).toBeUndefined()
+  await terminal.unmount()
+})
