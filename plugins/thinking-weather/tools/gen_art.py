@@ -504,6 +504,10 @@ for i, y in enumerate(range(HORIZON + 20, H, 4)):
     prev = (fx, y, h)
 
 
+terrain_cells = ground.a.copy()   # the bare land, before trees, farm and town
+terrain_pal = list(ground.pal)
+
+
 def tree(cx, base, h, r, pal=('#0e2418', '#173522', '#21492b', '#2f6135', '#447a3e')):
     for y in range(base - h, base):
         gput(cx, y, '#2a1f1a')
@@ -641,14 +645,15 @@ gput(266, 154, '#1b1b22'); gput(268, 154, '#1b1b22')
 rng = random.Random(2026)
 
 
-def variant(remap, extra=None):
-    """A copy of the summer ground with colours swapped (None removes a cell), then `extra`."""
-    v = Layer(list(ground.pal))
-    v.a = ground.a.copy()
+def variant(remap, extra=None, base=None):
+    """A copy of a summer ground (the village's by default) with colours swapped, then `extra`."""
+    base = ground if base is None else base
+    v = Layer(list(base.pal))
+    v.a = base.a.copy()
     for old, new in remap.items():
-        if old not in ground.pal:
+        if old not in base.pal:
             continue
-        i = ground.pal.index(old)
+        i = base.pal.index(old)
         if new is None:
             v.a[v.a == i] = -1
         else:
@@ -682,11 +687,12 @@ def more_flowers(v):
             vput(v, x, y, rng.choice(['#f2b8d0', '#ffffff', '#f4d35e', '#e86a8a']))
 
 
-spring = variant({
+SPRING_MAP = {
     TREE[4]: '#f2b8d0', TREE[3]: '#5e9653',                 # blossom on the crowns
     WHEAT[0]: '#8cc36b', WHEAT[1]: '#7ea852', WHEAT[2]: '#9fd07a',   # young crops
     MEADOW_C[0]: '#7fbf5a', MEADOW_C[1]: '#6aae4c', MEADOW_C[2]: '#5a9a44', MEADOW_C[3]: '#4a8a3c', MEADOW_C[4]: '#3c7a34',
-}, more_flowers)
+}
+spring = variant(SPRING_MAP, more_flowers)
 
 
 def leaves(v):
@@ -696,13 +702,14 @@ def leaves(v):
             vput(v, x, y, rng.choice(['#d27a2a', '#a8481c', '#f0b04a']))
 
 
-autumn = variant({
+AUTUMN_MAP = {
     TREE[0]: '#3a1a10', TREE[1]: '#6a2a14', TREE[2]: '#a8481c', TREE[3]: '#d27a2a', TREE[4]: '#f0b04a',
     GREENS[0]: '#9a7a3e', GREENS[1]: '#b08a44', GREENS[2]: '#7a6034', GREENS[3]: '#a8904a', GREENS[4]: '#6a5230', GREENS[5]: '#c0a050',
     MEADOW_C[0]: '#8a9a4a', MEADOW_C[1]: '#7a8a42', MEADOW_C[2]: '#6a7a3a', MEADOW_C[3]: '#5a6a32', MEADOW_C[4]: '#4a5a2a',
     '#76b05a': '#b0a050', '#3d7a36': '#6a6a30',
     '#b48ae8': '#d27a2a', '#e86a8a': '#a8481c', '#ffffff': '#f0b04a',
-}, leaves)
+}
+autumn = variant(AUTUMN_MAP, leaves)
 
 MILD = {   # a winter with no snow: dull greens, browned fields, bare-looking trees
     TREE[3]: '#4a5a3a', TREE[4]: '#6a6a48', TREE[2]: '#3a4a30',
@@ -735,7 +742,7 @@ def snow_on_top(v):
                     vput(v, x, y, SNOW[1] if (x + y) % 5 else SNOW[2])
 
 
-snowy = variant({
+SNOW_MAP = {
     TREE[0]: '#14282a', TREE[1]: '#1f3a35', TREE[2]: '#1f3a35', TREE[3]: '#e6eef7', TREE[4]: '#f4f8fd',
     **{g: SNOW[1] for g in GREENS}, WHEAT[0]: SNOW[0], WHEAT[1]: SNOW[1], WHEAT[2]: SNOW[0],
     MEADOW_C[0]: SNOW[0], MEADOW_C[1]: SNOW[1], MEADOW_C[2]: SNOW[2], MEADOW_C[3]: SNOW[3], MEADOW_C[4]: SNOW[4],
@@ -744,7 +751,188 @@ snowy = variant({
     '#8b7558': '#c9c0b2', '#74604a': '#b8ae9e', '#a39377': '#d8d0c4',            # snowy path
     '#4f7a3f': SNOW[1], '#2f6135': '#e6eef7', '#21492b': '#1f3a35',
     '#f4d35e': SNOW[1], '#e86a8a': SNOW[2], '#b48ae8': SNOW[1],
-}, snow_on_top)
+}
+snowy = variant(SNOW_MAP, snow_on_top)
+
+# ---- eras: the same land settled by the Stone Age and by a sci-fi future. scene.ts shows the one
+# the conversation's context has reached. Each starts from the bare land snapshot. ----
+rng = random.Random(4004)
+
+
+def land(remap=None):
+    """A layer of the bare land, colours optionally swapped."""
+    L = Layer(list(terrain_pal))
+    L.a = terrain_cells.copy()
+    for old, new in (remap or {}).items():
+        if old in L.pal:
+            i = L.pal.index(old)
+            if new not in L.pal:
+                L.pal.append(new)
+            L.a[L.a == i] = L.pal.index(new)
+    return L
+
+
+def tree_on(L, cx, base, h, r, pal=('#0e2418', '#173522', '#21492b', '#2f6135', '#447a3e')):
+    for y in range(base - h, base):
+        vput(L, cx, y, '#2a1f1a')
+        vput(L, cx + 1, y, '#3a2a20')
+    crown = [(cx + rng.uniform(-r, r), base - h - rng.uniform(0, r * 1.1), rng.uniform(r * .4, r * .65))
+             for _ in range(int(r * 1.5) + 3)]
+    for y in range(base - h - int(r * 2.2), base - h + int(r * 0.8)):
+        for x in range(cx - int(r * 1.6), cx + int(r * 1.6)):
+            best = None
+            for (px, py, pr) in crown:
+                if (x - px) ** 2 + (y - py) ** 2 < pr * pr:
+                    lit = ((px - x) + (py - y)) / pr
+                    best = lit if best is None else max(best, lit)
+            if best is not None:
+                v = np.clip(0.4 + 0.42 * best, 0, 0.999)
+                vput(L, x, y, pal[int(v * len(pal))])
+
+
+def lantern_post(L, top='#1b1b22'):
+    for y in range(154, 168):
+        vput(L, 267, y, top)
+    vput(L, 266, 154, top); vput(L, 268, 154, top)
+
+
+# -- Stone Age: wild grassland, round thatched huts in a palisade, a campfire, standing stones --
+WILD = {c: g for c, g in zip(['#6a9a4f', '#7ea852', '#c9a94a', '#557f42', '#b39445', '#89b05a', '#4f7a3f', '#a7c066', '#d8bb5c'],
+                             ['#6a9a4f', '#76a250', '#8aa858', '#5f8a48', '#7e9a50', '#6a9a4f', '#5f8a48', '#8aa858', '#8aa858'])}
+WILD.update({'#2a4a2c': '#5f8a48', '#5a3d26': '#437a3b', '#7a5636': '#4f8a43',      # no hedges or fences
+             '#8b7558': '#7a6648', '#74604a': '#6a5640', '#a39377': '#6a5640'})      # a beaten earth trail
+stone = land(WILD)
+STONE_HUTS = []   # [x, y] hut doorways, glowing with firelight after dark
+FIRES = []        # [x, y] campfire, flames and smoke drawn live
+THATCH = ['#6a4e2a', '#8a6a3a', '#a8844a', '#c4a060']
+
+
+def hut(L, cx, base, w, h):
+    for r in range(h):
+        y = base - h + r
+        half = max(1, int(round((w / 2) * math.sqrt((r + 1) / h))))
+        for x in range(cx - half, cx + half + 1):
+            t = (x - (cx - half)) / max(1, 2 * half)
+            band = THATCH[min(3, int((1 - t) * 3.2 + (0.4 if (x + y) % 3 == 0 else 0)))]
+            vput(L, x, y, band)
+    vput(L, cx, base - h - 1, '#4a3420'); vput(L, cx - 1, base - h - 2, '#4a3420'); vput(L, cx + 1, base - h - 2, '#4a3420')
+    for y in (base - 2, base - 1):
+        vput(L, cx, y, '#1a120a'); vput(L, cx + 1, y, '#1a120a')
+    STONE_HUTS.append([cx, base - 2])
+
+
+for x in range(186, 316, 3):                   # a palisade of stakes round the settlement
+    for y in range(HORIZON + 14, HORIZON + 18):
+        vput(stone, x, y, '#5a4028' if y > HORIZON + 14 else '#7a5a38')
+for (cx, base, w, h) in [(196, 157, 9, 6), (214, 156, 8, 5), (236, 157, 10, 6), (256, 156, 8, 5), (296, 157, 9, 6),
+                         (203, 165, 11, 7), (226, 165, 10, 7), (281, 165, 11, 7), (304, 165, 9, 6)]:
+    hut(stone, cx, base, w, h)
+FIRES.append([250, 164])
+for (dx, dy, c) in [(-2, 0, '#6a6a70'), (2, 0, '#6a6a70'), (-1, 1, '#5a5a60'), (1, 1, '#5a5a60'), (0, 1, '#5a3a20'), (-1, 0, '#4a2a14'), (1, 0, '#4a2a14')]:
+    vput(stone, 250 + dx, 164 + dy, c)
+# standing stones on the rise where the windmill would stand
+for i, sx in enumerate(range(26, 58, 7)):
+    hgt = 9 if i % 2 == 0 else 7
+    for y in range(HORIZON + 3 - hgt, HORIZON + 3):
+        vput(stone, sx, y, '#9a9ea6'); vput(stone, sx + 1, y, '#7c7f86'); vput(stone, sx + 2, y, '#6a6d74')
+for x in range(26, 52):                        # lintels across the taller pairs
+    if (x - 26) % 14 < 10:
+        vput(stone, x, HORIZON - 7, '#8a8e96')
+# a mammoth grazing where the farm would be
+MAMMOTH = [
+    '....bbbbbb....',
+    '..bbbbbbbbbb..',
+    '.bbbbbbbbbbbbh',
+    'bbbbbbbbbbbbbh',
+    'bbbbbbbbbbbbhh',
+    'bbbbbbbbbbbb.h',
+    '.bb.bb..bb.bt.',
+    '.bb.bb..bb..tt',
+]
+for y, row in enumerate(MAMMOTH):
+    for x, c in enumerate(row):
+        if c != '.':
+            vput(stone, 96 + x, HORIZON - 4 + y, {'b': '#5a3a24', 'h': '#4a2e1c', 't': '#e8e0d0'}[c])
+for (tx, tb, th, tr) in [(12, 168, 8, 10), (33, 161, 5, 7), (306, 170, 8, 9), (120, HORIZON + 2, 2, 3), (150, HORIZON + 1, 2, 3), (176, HORIZON + 2, 3, 4)]:
+    tree_on(stone, tx, tb, th, tr)
+lantern_post(stone, '#4a3420')                  # a torch on a pole, lit live like the lantern
+
+# -- the future: solar fields, a glowing road, a city of spires and domes, turbines, a space elevator --
+FUTURE = {'#6a9a4f': '#24485a', '#7ea852': '#2a5468', '#c9a94a': '#1f3a4a', '#557f42': '#22404f', '#b39445': '#1c3442',
+          '#89b05a': '#2a5468', '#4f7a3f': '#22404f', '#a7c066': '#2e5c70', '#d8bb5c': '#24485a',
+          '#2a4a2c': '#3fd0e0',                                               # hedges become light lines
+          '#8b7558': '#3a4050', '#74604a': '#2a2f3a', '#a39377': '#7fe8ff',   # a dark road with a lit centre
+          '#5a3d26': '#9fb3c8', '#7a5636': '#c9d6e8',                         # fences become light rails
+          '#5d9a4c': '#4a9a6c', '#4f8a43': '#3e8a60', '#437a3b': '#347a56', '#376a33': '#2a6a4c', '#2b5a2b': '#205a40'}
+future = land(FUTURE)
+SCIFI_WINDOWS = []   # [x, y, w, h, lit] tower windows, lit in cool colours after dark
+BEACONS = []         # [x, y] blinking lights on the tops of the spires
+FUTURE_EAVES = []
+FUTURE_DOORS = []
+FACE = ['#5a6a88', '#8a9ab8', '#c9d6e8', '#e8f0fa']
+
+
+def spire(L, x, base, w, h, top='taper'):
+    for y in range(base - h, base):
+        for xx in range(x, x + w):
+            edge = xx - x
+            col = FACE[3] if edge == 0 else FACE[2] if edge < w // 2 else FACE[1] if edge < w - 1 else FACE[0]
+            vput(L, xx, y, col)
+    if top == 'taper':
+        for k in range(w // 2 + 1):
+            for xx in range(x + k, x + w - k):
+                vput(L, xx, base - h - 1 - k * 2, FACE[2]); vput(L, xx, base - h - 2 - k * 2, FACE[2] if xx < x + w // 2 else FACE[1])
+        tip = base - h - 2 - (w // 2) * 2
+        for y in range(tip - 5, tip):
+            vput(L, x + w // 2, y, '#9fb3c8')
+        BEACONS.append([x + w // 2, tip - 6])
+    else:  # a domed top
+        for k in range(w // 2):
+            for xx in range(x + k, x + w - k):
+                vput(L, xx, base - h - 1 - k // 1, '#7fb8d8' if xx < x + w // 2 else '#5a90b8')
+        BEACONS.append([x + w // 2, base - h - w // 2 - 1])
+    for wy in range(base - h + 2, base - 2, 3):
+        for wx in range(x + 1, x + w - 1, 2):
+            SCIFI_WINDOWS.append([wx, wy, 1, 1, 1 if rng.random() < 0.8 else 0])
+    FUTURE_EAVES.append([x, base - h, w])
+    FUTURE_DOORS.append([x + w // 2, base - 1])
+
+
+for (x, base, w, h, top) in [(186, 162, 7, 34, 'taper'), (195, 160, 6, 52, 'taper'), (204, 162, 9, 26, 'dome'),
+                             (216, 160, 7, 70, 'taper'), (226, 162, 8, 44, 'taper'), (237, 161, 10, 30, 'dome'),
+                             (250, 160, 6, 58, 'taper'), (259, 162, 8, 40, 'taper'), (272, 161, 7, 48, 'taper'),
+                             (282, 162, 10, 24, 'dome'), (295, 160, 6, 62, 'taper'), (304, 162, 9, 36, 'taper')]:
+    spire(future, x, base, w, h, top)
+for (x0, x1, y) in [(193, 216, 128), (222, 250, 120), (256, 272, 134), (277, 295, 126)]:   # skybridges
+    for x in range(x0, x1):
+        vput(future, x, y, '#c9d6e8'); vput(future, x, y + 1, '#7fe8ff' if x % 3 else '#8a9ab8')
+# greenhouse domes and wind turbines on the left, where the farm stands in other ages
+for (cx, base, r) in [(100, HORIZON + 4, 7), (114, HORIZON + 4, 5)]:
+    for y in range(base - r, base):
+        for x in range(cx - r, cx + r + 1):
+            if (x - cx) ** 2 + ((y - base) * 1.2) ** 2 < r * r:
+                vput(future, x, y, '#bfe8f4' if (x + y) % 4 == 0 else '#7fc8e0' if x < cx else '#5aa8c8')
+TURBINE = [40, HORIZON - 16]
+for (tx, top) in [(40, HORIZON - 16), (62, HORIZON - 10)]:
+    for y in range(top, HORIZON + 4):
+        vput(future, tx, y, '#e8f0fa')
+# a space elevator from the tallest peak into the sky
+for y in range(0, 118):
+    vput(future, 282, y, '#9fb3c8' if y % 6 else '#c9d6e8')
+LIFT = [282, 118]
+for (tx, tb, th, tr) in [(12, 168, 8, 10), (33, 161, 5, 7), (150, HORIZON + 1, 2, 3)]:   # park trees
+    tree_on(future, tx, tb, th, tr, pal=('#0e2a24', '#173a32', '#21503f', '#2f6a52', '#44886a'))
+lantern_post(future, '#9fb3c8')
+NEON_LAMPS = [[178, 158], [200, 166], [238, 166], [296, 166]]
+for (lx, ly) in NEON_LAMPS:
+    for y in range(ly + 1, ly + 7):
+        vput(future, lx, y, '#9fb3c8')
+
+# every era in every season
+stone_spring, stone_autumn, stone_winter, stone_snow = (variant(SPRING_MAP, more_flowers, stone), variant(AUTUMN_MAP, leaves, stone),
+                                                        variant(MILD, None, stone), variant(SNOW_MAP, snow_on_top, stone))
+future_snow = variant({**SNOW_MAP, **{c: SNOW[1] for c in ['#24485a', '#2a5468', '#1f3a4a', '#22404f', '#1c3442', '#2e5c70']},
+                       '#4a9a6c': SNOW[0], '#3e8a60': SNOW[1], '#347a56': SNOW[2], '#2a6a4c': SNOW[3], '#205a40': SNOW[4]}, snow_on_top, future)
 
 # ---- skies: a few fair-weather clouds, and a grey overcast deck ----
 fair = Layer(['#5d9fd8', '#86bfea', '#b6dcf6', '#e2f4fd', '#ffffff'])
@@ -763,13 +951,18 @@ for y in range(0, 72):
             overcast.a[y, x] = 0
 
 
-frag = {'SKY': SKY, 'BANK_L': emit_safe(bank_l), 'BANK_R': emit_safe(bank_r), 'BANK_T': emit_safe(bank_t), 'GROUND': emit_safe(ground), 'GROUND_SPRING': emit_safe(spring), 'GROUND_AUTUMN': emit_safe(autumn), 'GROUND_WINTER': emit_safe(winter), 'GROUND_SNOW': emit_safe(snowy), 'FAIR': emit_safe(fair), 'OVERCAST': emit_safe(overcast)}
+frag = {'SKY': SKY, 'BANK_L': emit_safe(bank_l), 'BANK_R': emit_safe(bank_r), 'BANK_T': emit_safe(bank_t), 'GROUND': emit_safe(ground), 'GROUND_SPRING': emit_safe(spring), 'GROUND_AUTUMN': emit_safe(autumn), 'GROUND_WINTER': emit_safe(winter), 'GROUND_SNOW': emit_safe(snowy), 'FAIR': emit_safe(fair), 'OVERCAST': emit_safe(overcast),
+        'GROUND_STONE': emit_safe(stone), 'GROUND_STONE_SPRING': emit_safe(stone_spring), 'GROUND_STONE_AUTUMN': emit_safe(stone_autumn),
+        'GROUND_STONE_WINTER': emit_safe(stone_winter), 'GROUND_STONE_SNOW': emit_safe(stone_snow),
+        'GROUND_FUTURE': emit_safe(future), 'GROUND_FUTURE_SNOW': emit_safe(future_snow)}
 lines = ['// Generated by tools/gen_art.py: vector pixel-art layers (320x180). Do not edit.',
          '// Seam handling follows the method of BackdropKit (MIT, github.com/winchxyz/backdropkit).']
 for k, v in frag.items():
     lines.append(f"export const {k} = '{v}'")
 import json
-for k, v in (('WINDOWS', WINDOWS), ('CHIMNEYS', CHIMNEYS), ('LAMPS', LAMPS), ('MILL', MILL), ('DOORS', DOORS), ('EAVES', EAVES)):
+for k, v in (('WINDOWS', WINDOWS), ('CHIMNEYS', CHIMNEYS), ('LAMPS', LAMPS), ('MILL', MILL), ('DOORS', DOORS), ('EAVES', EAVES),
+             ('STONE_HUTS', STONE_HUTS), ('FIRES', FIRES), ('SCIFI_WINDOWS', SCIFI_WINDOWS), ('BEACONS', BEACONS),
+             ('FUTURE_EAVES', FUTURE_EAVES), ('FUTURE_DOORS', FUTURE_DOORS), ('TURBINE', TURBINE), ('LIFT', LIFT), ('NEON_LAMPS', NEON_LAMPS)):
     lines.append(f"export const {k} = {json.dumps(v)} as const")
 (MOD / 'hooks' / 'art.ts').write_text('\n'.join(lines) + '\n')
 print({k: len(v) for k, v in frag.items()}, 'total', sum(len(v) for v in frag.values()))
@@ -786,7 +979,8 @@ for y in range(H):
             break
 skyimg[..., 3] = 255
 base = Image.fromarray(skyimg)
-for name, layers in (('summer', [ground]), ('spring', [fair, spring]), ('autumn', [fair, autumn]), ('winter', [overcast, winter]), ('snow', [overcast, snowy])):
+for name, layers in (('summer', [ground]), ('spring', [fair, spring]), ('autumn', [fair, autumn]), ('winter', [overcast, winter]), ('snow', [overcast, snowy]),
+                     ('stone', [stone]), ('stone_snow', [stone_snow]), ('future', [future]), ('future_snow', [future_snow])):
     im = base.copy()
     for l in layers:
         im = Image.alpha_composite(im, Image.fromarray(l.rgba()))

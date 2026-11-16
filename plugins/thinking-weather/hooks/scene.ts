@@ -1,8 +1,10 @@
 import {
-  BANK_L, BANK_R, BANK_T, CHIMNEYS, DOORS, EAVES, FAIR, GROUND, GROUND_AUTUMN, GROUND_SNOW, GROUND_SPRING, GROUND_WINTER, LAMPS,
-  MILL, OVERCAST, WINDOWS,
+  BANK_L, BANK_R, BANK_T, BEACONS, CHIMNEYS, DOORS, EAVES, FAIR, FIRES, FUTURE_DOORS, FUTURE_EAVES, GROUND, GROUND_AUTUMN,
+  GROUND_FUTURE, GROUND_FUTURE_SNOW, GROUND_SNOW, GROUND_SPRING, GROUND_STONE, GROUND_STONE_AUTUMN, GROUND_STONE_SNOW,
+  GROUND_STONE_SPRING, GROUND_STONE_WINTER, GROUND_WINTER, LAMPS, LIFT, MILL, NEON_LAMPS, OVERCAST, SCIFI_WINDOWS,
+  STONE_HUTS, TURBINE, WINDOWS,
 } from './art'
-import type { Cond, Holiday, Outside, Season, SessionEvents, Sky, Strike } from '../types'
+import type { Cond, Era, Holiday, Outside, Season, SessionEvents, Sky, Strike } from '../types'
 
 // A 320x180 grid of pixel cells, all vector (the desktop app strips embedded images).
 // Every animation is timed from `now` at draw time, so a scene the app restarts (a resize, a
@@ -48,7 +50,7 @@ function rng(seed: number) {
 }
 
 // One bolt as pixel strokes: a 1-cell core, a 3-cell glow, a branch or two, sparks at the foot.
-function bolt(st: Strike, ageMs: number): string {
+function bolt(st: Strike, ageMs: number, neon = false): string {
   const r = rng(st.seed)
   const zone = ZONES[Math.floor(r() * ZONES.length)] ?? ZONES[0]!
   const x0 = zone.x0 + Math.floor(r() * (zone.x1 - zone.x0))
@@ -75,7 +77,7 @@ function bolt(st: Strike, ageMs: number): string {
   const sparks = `M${xEnd - 2} ${GROUND_Y - 1}h1m2 -1h1m1 1h1`
   const style = `style="animation-delay:${-ageMs}ms"`
   // a failed tool call strikes red
-  const [halo, centre, sky] = st.err ? ['#ff5a4a', '#ffd6cc', '#ffb4a6'] : ['#9fc8ff', '#fff', '#e8f0ff']
+  const [halo, centre, sky] = st.err ? ['#ff5a4a', '#ffd6cc', '#ffb4a6'] : neon ? ['#c060ff', '#e8fbff', '#d8b8ff'] : ['#9fc8ff', '#fff', '#e8f0ff']
   return `<g class="bolt" ${style}><path stroke="${halo}" stroke-opacity=".55" d="${glow.join('')}"/>` +
     `<path stroke="${centre}" d="${core.join('')}${sparks}"/></g>` +
     `<rect class="flash" ${style} y="-1" width="320" height="182" fill="${sky}"/>`
@@ -165,6 +167,7 @@ function moonDisc(cx: number, cy: number, phase: number): string {
 }
 
 function sky(look: Look, out: Outside): string {
+  const era = drawnEra(out.era)
   const grey = GREY.has(out.cond)
   const greyTo = mixHex('#a3acb8', '#1a1f2a', 1 - look.bright)
   const haze = grey ? 0.6 : out.cond === 'fog' ? 0.4 : 0
@@ -191,12 +194,42 @@ function sky(look: Look, out: Outside): string {
   const lit = `style="filter:brightness(${Math.max(0.35, look.bright).toFixed(2)})"`
   const clouds = grey ? `<g ${lit}>${OVERCAST}</g>` : out.cond === 'partly' ? `<g ${lit}>${FAIR}</g>` : ''
   return `<linearGradient id="skyg" x1="0" y1="0" x2="0" y2="1">${stops}</linearGradient>` +
-    `<rect y="-1" width="320" height="162" fill="url(#skyg)"/>${stars}${bodies}${clouds}`
+    `<rect y="-1" width="320" height="162" fill="url(#skyg)"/>${stars}${era === 'scifi' && !grey ? futureSky(look) : ''}${bodies}${clouds}`
 }
 
 // ---- the real weather outside, when Claude is not bringing its own storm ----
 const GREY = new Set<Cond>(['overcast', 'rain', 'snow', 'thunder'])
-const GROUNDS: Record<Season, string> = { spring: GROUND_SPRING, summer: GROUND, autumn: GROUND_AUTUMN, winter: GROUND_WINTER }
+// ---- eras: which land, buildings and lights each age of society draws. Industrial and modern are
+// drawn as the village until their art exists. ----
+export type Drawn = 'stone' | 'village' | 'scifi'
+export const drawnEra = (e: Era | undefined): Drawn => (e === 'stone' ? 'stone' : e === 'scifi' ? 'scifi' : 'village')
+
+type Win = readonly (readonly [number, number, number, number, number])[]
+type Parts = {
+  grounds: Record<Season | 'snow', string>
+  windows: Win; warm: string; halo: string; glass: string
+  lamps: readonly (readonly [number, number])[]; lampLight: string; lampHead: string
+  chimneys: readonly (readonly [number, number])[]
+  mill?: readonly [number, number]; sail: string
+  doors: readonly (readonly [number, number])[]; eaves: readonly (readonly [number, number, number])[]
+}
+const ERAS: Record<Drawn, Parts> = {
+  stone: {
+    grounds: { spring: GROUND_STONE_SPRING, summer: GROUND_STONE, autumn: GROUND_STONE_AUTUMN, winter: GROUND_STONE_WINTER, snow: GROUND_STONE_SNOW },
+    windows: STONE_HUTS.map(([x, y]) => [x, y, 2, 2, 1] as const), warm: '#ff9a3a', halo: '#ff7a2a', glass: '#1a120a',
+    lamps: [], lampLight: '#ffcf6a', lampHead: '#3a3326', chimneys: [], sail: '#efe6d2', doors: STONE_HUTS, eaves: [],
+  },
+  village: {
+    grounds: { spring: GROUND_SPRING, summer: GROUND, autumn: GROUND_AUTUMN, winter: GROUND_WINTER, snow: GROUND_SNOW },
+    windows: WINDOWS, warm: '#ffcf6a', halo: '#ffb347', glass: '#33425f',
+    lamps: LAMPS, lampLight: '#ffcf6a', lampHead: '#ffe6a0', chimneys: CHIMNEYS, mill: MILL, sail: '#efe6d2', doors: DOORS, eaves: EAVES,
+  },
+  scifi: {
+    grounds: { spring: GROUND_FUTURE, summer: GROUND_FUTURE, autumn: GROUND_FUTURE, winter: GROUND_FUTURE, snow: GROUND_FUTURE_SNOW },
+    windows: SCIFI_WINDOWS, warm: '#9ff0ff', halo: '#4fd8ff', glass: '#8a9ab8',
+    lamps: NEON_LAMPS, lampLight: '#7fe8ff', lampHead: '#e8faff', chimneys: [], mill: TURBINE, sail: '#f4f8ff', doors: FUTURE_DOORS, eaves: FUTURE_EAVES,
+  },
+}
 
 // Light rain across the whole valley, and snowflakes; both step on the half-second clock.
 const WIDE_RAIN = (() => {
@@ -246,34 +279,35 @@ const loop = (now: number, ms: number, offsetSteps = 0) => `animation-delay:${-(
 
 const pix = (x: number, y: number, w = 1) => `M${x} ${y}h${w}`
 
-function town(look: Look, now: number, waiting: boolean): string {
+function town(look: Look, now: number, waiting: boolean, era: Drawn = 'village'): string {
+  const P = ERAS[era]
   const night = look.lights
   const dark = 1 - look.bright
   // windows: glass by day; after dark most glow warm, a few stay dark
   let lit = ''
   let unlit = ''
   let halo = ''
-  for (const [x, y, w, h, on] of WINDOWS) {
+  for (const [x, y, w, h, on] of P.windows) {
     for (let r = 0; r < h; r++) {
       if (on && night > 0.05) lit += pix(x, y + r, w)
       else unlit += pix(x, y + r, w)
     }
     if (on && night > 0.05) halo += `M${x - 1} ${y - 1}h${w + 2}M${x - 2} ${y}h${w + 4}M${x - 1} ${y + h}h${w + 2}`
   }
-  const glass = mixHex('#33425f', '#0c1120', dark)
-  const warm = mixHex('#33425f', '#ffcf6a', Math.min(1, night * 1.2))
+  const glass = mixHex(P.glass, '#0c1120', dark)
+  const warm = mixHex(P.glass, P.warm, Math.min(1, night * 1.2))
   let out = `<path stroke="${glass}" d="${unlit}"/>`
-  if (lit) out += `<path stroke="#ffb347" stroke-opacity="${(0.28 * night).toFixed(2)}" d="${halo}"/><path stroke="${warm}" d="${lit}"/>`
+  if (lit) out += `<path stroke="${P.halo}" stroke-opacity="${(0.28 * night).toFixed(2)}" d="${halo}"/><path stroke="${warm}" d="${lit}"/>`
   // streetlamps: a warm head and a pool of light on the lane after dark
   let heads = ''
   let pools = ''
-  for (const [x, y] of LAMPS) {
+  for (const [x, y] of P.lamps) {
     heads += pix(x - 1, y - 1, 3)
     pools += `M${x - 2} ${y - 2}h5M${x - 3} ${y - 1}h7M${x - 3} ${y}h7M${x - 2} ${y + 1}h5M${x - 5} ${y + 7}h11M${x - 4} ${y + 8}h9`
   }
   out += night > 0.05
-    ? `<path stroke="#ffcf6a" stroke-opacity="${(0.22 * night).toFixed(2)}" d="${pools}"/><path stroke="${mixHex('#3a3326', '#ffe6a0', night)}" d="${heads}"/>`
-    : `<path stroke="#3a3326" d="${heads}"/>`
+    ? `<path stroke="${P.lampLight}" stroke-opacity="${(0.22 * night).toFixed(2)}" d="${pools}"/><path stroke="${mixHex('#3a3326', P.lampHead, night)}" d="${heads}"/>`
+    : heads ? `<path stroke="#3a3326" d="${heads}"/>` : ''
   // the lantern by the road: steady after dark unless it is blinking for you
   if (!waiting && night > 0.05) {
     out += `<path stroke="#ffb347" stroke-opacity="${(0.4 * night).toFixed(2)}" d="M264 150h7M263 151h9M263 152h9M263 153h9M264 154h7"/>` +
@@ -281,14 +315,18 @@ function town(look: Look, now: number, waiting: boolean): string {
   }
   // chimney smoke: three puffs rising and thinning, each chimney a step out of time
   const smoke = mixHex('#d6d9e0', '#59607a', dark)
-  out += CHIMNEYS.map(([x, y], i) =>
+  out += P.chimneys.map(([x, y], i) =>
     `<path class="smoke" style="${loop(now, 2000, i % 4)}" stroke="${smoke}" stroke-opacity=".7" d="M${x} ${y}h1M${x + 1} ${y - 2}h2M${x} ${y - 4}h2"/>`).join('')
-  // windmill sails, turning between two frames
-  const [mx, my] = MILL
-  const sail = mixHex('#efe6d2', '#6a6a78', dark)
-  out += `<path class="sa" style="${loop(now, 1000)}" stroke="${sail}" d="M${mx} ${my - 7}v14M${mx - 7} ${my}h14"/>` +
-    `<path class="sb" style="${loop(now, 1000)}" stroke="${sail}" d="${[1, 2, 3, 4, 5].map(k => `M${mx - k} ${my - k}h1M${mx + k} ${my - k}h1M${mx - k} ${my + k}h1M${mx + k} ${my + k}h1`).join('')}"/>` +
-    `<path stroke="#6b4b3a" d="M${mx} ${my}h1"/>`
+  // windmill sails (or a wind turbine's blades), turning between two frames
+  if (P.mill !== undefined) {
+    const [mx, my] = P.mill
+    const sail = mixHex(P.sail, '#6a6a78', dark)
+    out += `<path class="sa" style="${loop(now, 1000)}" stroke="${sail}" d="M${mx} ${my - 7}v14M${mx - 7} ${my}h14"/>` +
+      `<path class="sb" style="${loop(now, 1000)}" stroke="${sail}" d="${[1, 2, 3, 4, 5].map(k => `M${mx - k} ${my - k}h1M${mx + k} ${my - k}h1M${mx - k} ${my + k}h1M${mx + k} ${my + k}h1`).join('')}"/>` +
+      `<path stroke="#6b4b3a" d="M${mx} ${my}h1"/>`
+  }
+  if (era === 'stone') out += campfire(look, now)
+  if (era === 'scifi') out += future(look, now)
   // the pond's glint shifts now and then
   out += `<path class="ga" style="${loop(now, 2000)}" stroke="#eaf7ff" stroke-opacity="${(0.9 - 0.6 * dark).toFixed(2)}" d="M62 174h7M57 173h3"/>` +
     `<path class="gb" style="${loop(now, 2000)}" stroke="#eaf7ff" stroke-opacity="${(0.9 - 0.6 * dark).toFixed(2)}" d="M66 174h5M58 175h4"/>`
@@ -311,17 +349,69 @@ function town(look: Look, now: number, waiting: boolean): string {
   return out
 }
 
+// The Stone Age's campfire: flickering flames, a glow after dark, and smoke.
+function campfire(look: Look, now: number): string {
+  return FIRES.map(([x, y]) => {
+    const glow = look.lights > 0.05 ? `<path stroke="#ff8a2a" stroke-opacity="${(0.3 * look.lights).toFixed(2)}" d="${disc(x, y - 2, 5)}"/>` : ''
+    return glow +
+      `<path class="sa" style="${loop(now, 1000)}" stroke="#ff6a2a" d="M${x - 1} ${y - 1}h3M${x} ${y - 2}h1M${x - 1} ${y - 3}h1"/>` +
+      `<path class="sa" style="${loop(now, 1000)}" stroke="#ffd26a" d="M${x} ${y - 1}h1"/>` +
+      `<path class="sb" style="${loop(now, 1000)}" stroke="#ff6a2a" d="M${x - 1} ${y - 1}h3M${x} ${y - 2}h2M${x + 1} ${y - 3}h1"/>` +
+      `<path class="sb" style="${loop(now, 1000)}" stroke="#ffd26a" d="M${x} ${y - 1}h1M${x} ${y - 2}h1"/>` +
+      `<path class="smoke" style="${loop(now, 2000)}" stroke="${mixHex('#d6d9e0', '#59607a', 1 - look.bright)}" stroke-opacity=".6" d="M${x} ${y - 6}h1M${x + 1} ${y - 8}h2M${x} ${y - 10}h2"/>`
+  }).join('')
+}
+
+// The future's moving lights: blinking beacons on the spires, a car climbing the space elevator,
+// and hovercraft crossing the valley.
+function future(look: Look, now: number): string {
+  const beacons = BEACONS.map(([x, y]) => `M${x} ${y}h1`).join('')
+  const [lx, ly] = LIFT
+  const craft = [0, 1, 2].map(i => {
+    const y = 104 + i * 11
+    const back = i % 2 === 1
+    const x0 = back ? 330 : -14
+    const body = back
+      ? `M${x0} ${y}h4M${x0 + 1} ${y - 1}h2`
+      : `M${x0} ${y}h4M${x0 + 1} ${y - 1}h2`
+    const trail = back ? `M${x0 + 4} ${y}h5` : `M${x0 - 5} ${y}h5`
+    return `<g class="${back ? 'hover-back' : 'hover'}" style="${loop(now, 24000, i * 9)}"><path stroke="#7fe8ff" stroke-opacity=".45" d="${trail}"/>` +
+      `<path stroke="${mixHex('#e8f0fa', '#8a9ab8', 1 - look.bright)}" d="${body}"/><path stroke="#ff7ad8" d="M${back ? x0 : x0 + 3} ${y}h1"/></g>`
+  }).join('')
+  return `<path class="sa" style="${loop(now, 1000)}" stroke="#ff4a4a" d="${beacons}"/>` +
+    `<path class="sb" style="${loop(now, 1000)}" stroke="#7a2a2a" d="${beacons}"/>` +
+    `<path class="lift" style="${loop(now, 6000)}" stroke="#e8faff" d="M${lx} ${ly - 4}v3"/>` + craft
+}
+
+// The future's sky: a ringed planet, an orbital ring across the heavens, and an aurora at night.
+function futureSky(look: Look): string {
+  const night = look.lights
+  const a = (0.35 + 0.55 * night).toFixed(2)
+  const aurora = night > 0.2
+    ? `<linearGradient id="aur" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#3affb0" stop-opacity="0"/><stop offset=".3" stop-color="#3affb0" stop-opacity=".35"/>` +
+      `<stop offset=".65" stop-color="#9a5aff" stop-opacity=".3"/><stop offset="1" stop-color="#9a5aff" stop-opacity="0"/></linearGradient>` +
+      `<g opacity="${(0.8 * night).toFixed(2)}"><path fill="url(#aur)" d="M0 30q80 -18 160 4t160 -6v14q-80 14 -160 -4t-160 6z"/><path fill="url(#aur)" opacity=".6" d="M0 48q90 -12 170 6t150 -8v10q-80 10 -150 -4t-170 2z"/></g>`
+    : ''
+  return `<g opacity="${a}"><path stroke="#c9b8e8" d="${disc(64, 34, 12)}"/><path stroke="#a898d0" d="${disc(68, 38, 9)}"/>` +
+    `<path stroke="#e8dcff" fill="none" d="M40 39q24 9 48 -8"/><path stroke="#8a7ab8" fill="none" d="M38 41q26 11 52 -9"/></g>` +
+    `<path stroke="#e8f0fa" stroke-opacity="${(0.25 + 0.3 * night).toFixed(2)}" fill="none" d="M-10 92q170 -80 340 -20"/>` + aurora
+}
+
 const TOWN_CSS = `.smoke{animation:smoke 2s steps(4) infinite}
 @keyframes smoke{from{transform:translateY(0);opacity:1}to{transform:translateY(-8px);opacity:.2}}
 .sa{animation:sa 1s steps(1) infinite}.sb{animation:sb 1s steps(1) infinite}
 @keyframes sa{0%{opacity:1}50%{opacity:0}}@keyframes sb{0%{opacity:0}50%{opacity:1}}
 .ga{animation:sa 2s steps(1) infinite}.gb{animation:sb 2s steps(1) infinite}
 .bird{animation:bird 180s steps(360) infinite}
+.hover{animation:hover 24s steps(48) infinite}@keyframes hover{to{transform:translateX(360px)}}
+.hover-back{animation:hoverb 24s steps(48) infinite}@keyframes hoverb{to{transform:translateX(-360px)}}
+.lift{animation:lift 6s steps(12) infinite}@keyframes lift{to{transform:translateY(-110px)}}
 @keyframes bird{from{transform:translateX(0)}to{transform:translateX(360px)}}
 .ff{opacity:0;animation:ff 3s steps(1) infinite}
 @keyframes ff{0%{opacity:0}50%{opacity:1}67%{opacity:0}}`
 
 // ---- the session's own events ----
+const SHIMMER_MS = 2000
 export const NO_EVENTS: SessionEvents = { fogUntil: 0, kites: [], fireworks: [] }
 const FOG_IN_MS = 3000
 const FOG_OUT_MS = 4000
@@ -390,14 +480,16 @@ const EVENTS_CSS = `.bob{animation:bob 2s steps(1) infinite}@keyframes bob{0%{tr
 @keyframes fw1{0%,30%{opacity:0}31%{opacity:1}50%,100%{opacity:0}}
 @keyframes fw2{0%,45%{opacity:0}46%{opacity:1}68%,100%{opacity:0}}
 @keyframes fw3{0%,62%{opacity:0}63%{opacity:.8}92%,100%{opacity:0}}
-@keyframes fog-in{from{opacity:0}to{opacity:1}}@keyframes fog-out{from{opacity:1}to{opacity:0}}`
+@keyframes fog-in{from{opacity:0}to{opacity:1}}
+.shimmer{opacity:0;animation:shimmer ${SHIMMER_MS}ms steps(8) both}@keyframes shimmer{0%{opacity:0}25%{opacity:.55}100%{opacity:0}}@keyframes fog-out{from{opacity:1}to{opacity:0}}`
 
 
 // ---- holidays: decorations on the town, drawn over the dimmed ground so their lights glow ----
 const TREE_X = 132
 const TREE_BASE = 172
 
-function holiday(h: Holiday | undefined, look: Look, now: number): string {
+function holiday(h: Holiday | undefined, look: Look, now: number, era: Drawn = 'village'): string {
+  const { doors: DOORS, eaves: EAVES } = ERAS[era]
   if (h === undefined) return ''
   const night = look.lights
   const dark = 1 - look.bright
@@ -472,6 +564,16 @@ function holiday(h: Holiday | undefined, look: Look, now: number): string {
 }
 
 
+const ION: Record<string, string> = { '#11142f': '#1c0f33', '#24264f': '#341a5c', '#3a386c': '#52288a', '#57508a': '#7a44b8' }
+const ionise = (art: string) => art.replace(/#11142f|#24264f|#3a386c|#57508a/g, c => ION[c] ?? c)
+
+// When society reaches a new era, a shimmer passes over the valley.
+function shimmer(out: Outside, now: number): string {
+  const age = now - (out.eraSince ?? 0)
+  if (out.eraSince === undefined || age < 0 || age > SHIMMER_MS) return ''
+  return `<rect class="shimmer" style="animation-delay:${-age}ms" y="-1" width="320" height="182" fill="#eaf6ff"/>`
+}
+
 // A roll in and out, one cell per step so it stays on the pixel grid, eased: in arrives fast
 // and settles, out starts slow and speeds away. Each segment steps its own share of the cells.
 const EASE = [0, 0.35, 0.7, 1] // time marks
@@ -494,7 +596,10 @@ export const CLEAR_SUMMER: Outside = { cond: 'clear', season: 'summer', snowCove
 export function scene(s: Sky, now: number, hour: number, out: Outside = CLEAR_SUMMER, ev: SessionEvents = NO_EVENTS): string {
   const look = lookAt(hour)
   // an overcast day is dimmer on the ground too
-  const ground = out.snowCover ? GROUND_SNOW : GROUNDS[out.season]
+  const era = drawnEra(out.era)
+  // in the future Claude's storm is an ion storm: violet clouds, neon lightning
+  const ion = (art: string) => (era === 'scifi' ? ionise(art) : art)
+  const ground = out.snowCover ? ERAS[era].grounds.snow : ERAS[era].grounds[out.season]
   const dull = GREY.has(out.cond) || out.cond === 'fog' ? 0.85 : 1
   const stormy = s.mode === 'working' || s.mode === 'waiting'
   const modeAge = Math.max(0, now - s.modeSince)
@@ -504,9 +609,9 @@ export function scene(s: Sky, now: number, hour: number, out: Outside = CLEAR_SU
   const banks = stormy || s.mode === 'done'
     ? `<rect class="dim" style="animation:${stormy ? 'dim-in' : 'dim-out'} ${roll.slice(roll.indexOf(' ') + 1)}" y="-1" width="320" height="182" fill="#06071a" fill-opacity=".45"/>` +
       `<g style="filter:brightness(${Math.max(0.5, look.bright).toFixed(2)})">` +
-      `<g class="bl" style="animation:bl-${roll}">${BANK_L}</g>` +
-      `<g class="br" style="animation:br-${roll}">${BANK_R}</g>` +
-      `<g class="bt" style="animation:bt-${roll}">${BANK_T}</g></g>`
+      `<g class="bl" style="animation:bl-${roll}">${ion(BANK_L)}</g>` +
+      `<g class="br" style="animation:br-${roll}">${ion(BANK_R)}</g>` +
+      `<g class="bt" style="animation:bt-${roll}">${ion(BANK_T)}</g></g>`
     : ''
   const strikes = s.strikes
     .filter(st => now - st.t < STRIKE_MS)
@@ -554,15 +659,15 @@ ${sky(look, out)}
 ${outside(out, look, now, s.mode === 'working')}${kites(ev, now, look)}${fireworks(ev, now)}${rain}${banks}${darker}
 ${beams}${bolts}
 <g style="filter:brightness(${(look.bright * dull).toFixed(2)}) saturate(${(look.sat * dull).toFixed(2)}) sepia(${look.warm.toFixed(2)})">${ground}</g>
-${lantern}${town(look, now, s.mode === 'waiting')}${out.cond === 'fog' ? fog(look) : ''}${holiday(out.holiday, look, now)}${compactFog(ev, now, look)}
+${lantern}${town(look, now, s.mode === 'waiting', era)}${out.cond === 'fog' ? fog(look) : ''}${holiday(out.holiday, look, now, era)}${shimmer(out, now)}${compactFog(ev, now, look)}
 </svg></svg>`
 
   // newest bolts first; a crowded burst drops its oldest so the scene stays under the app's limit
   let n = strikes.length
-  let svg = build(strikes.map(st => bolt(st, now - st.t)).join(''))
+  let svg = build(strikes.map(st => bolt(st, now - st.t, era === 'scifi')).join(''))
   while (svg.length > LIMIT && n > 0) {
     n--
-    svg = build(strikes.slice(0, n).map(st => bolt(st, now - st.t)).join(''))
+    svg = build(strikes.slice(0, n).map(st => bolt(st, now - st.t, era === 'scifi')).join(''))
   }
   return svg
 }

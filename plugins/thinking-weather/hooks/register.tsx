@@ -1,10 +1,10 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, PluginOptions, Register, ThemeSetArgs } from 'claude-code'
 
-import type { Cond, Holiday, Mode, Outside, Report, Season, SessionEvents, Sky, Strike } from '../types'
+import type { Cond, Era, EraState, Holiday, Mode, Outside, Report, Season, SessionEvents, Sky, Strike } from '../types'
 import { FIREWORK_MS, NO_EVENTS, scene } from './scene'
 import { ICON_PX, spinnerSvg } from './spinner'
-import { fetchReport, holidayOf, moonPhase, seasonOf, solarHour } from './outside'
+import { eraLevel, fetchReport, holidayOf, moonPhase, seasonOf, solarHour } from './outside'
 
 const INITIAL: Sky = { mode: 'idle', modeSince: 0, stormSince: 0, strikes: [], at: 0 }
 const sky = atom({ plugin: 'thinking-weather', key: 'sky' } as const, INITIAL)
@@ -15,6 +15,13 @@ const tick = atom({ plugin: 'thinking-weather', key: 'tick' } as const, 0)
 let tickTimer: { cancel: () => void } | undefined
 const events = atom({ plugin: 'thinking-weather', key: 'events' } as const, NO_EVENTS)
 const COMPACT_FOG_MS = 60_000
+
+// Society advances with the conversation's context: an era for each fifth of the window. Compaction
+// sends it back to the Stone Age behind the fog.
+const ERA_ORDER: readonly Era[] = ['stone', 'village', 'industrial', 'modern', 'scifi']
+const eraState = atom({ plugin: 'thinking-weather', key: 'era' } as const, { level: 0, since: 0 } as EraState)
+let eraOverride: Era | undefined
+const levelFor = eraLevel
 const GIT_SHIP = /\bgit\b[^|;&]*\b(commit|push)\b/
 
 const LOOK: ThemeSetArgs = {
@@ -44,16 +51,18 @@ const CONDS: readonly Cond[] = ['clear', 'partly', 'overcast', 'rain', 'snow', '
 const SEASONS = ['spring', 'summer', 'autumn', 'winter', 'snow'] as const
 
 /** The sky outside now: previews first, then the last report for the place set, then the calendar. */
-function outsideAt(ms: number, r: Report | null): Outside {
+function outsideAt(ms: number, r: Report | null, era?: EraState): Outside {
   const fresh = r !== null && r.place === place && ms - r.at < 3 * 60 * 60 * 1000 ? r : null
   const cond = skyOverride ?? fresh?.cond ?? 'clear'
   const moon = moonPhase(new Date(ms))
+  const eraName = eraOverride ?? ERA_ORDER[era?.level ?? 0] ?? 'stone'
+  const eraSince = eraOverride === undefined ? era?.since : undefined
   const holiday = holidayOverride === 'none' ? undefined : holidayOverride ?? holidayOf(new Date(ms))
-  if (seasonOverride === 'snow') return { cond, season: 'winter', snowCover: true, moon, holiday }
+  if (seasonOverride === 'snow') return { cond, season: 'winter', snowCover: true, moon, holiday, era: eraName, eraSince }
   const season = seasonOverride ?? seasonOf(new Date(ms), fresh?.lat ?? r?.lat ?? 40)
   // With no place set, winter is the storybook kind; with one, snow lies only when it really does.
   const snowCover = seasonOverride === undefined && (fresh ? fresh.snowCover : place === '' && season === 'winter')
-  return { cond, season, snowCover: snowCover || cond === 'snow', moon, holiday }
+  return { cond, season, snowCover: snowCover || cond === 'snow', moon, holiday, era: eraName, eraSince }
 }
 
 async function refreshWeather($: EngineInterface): Promise<string> {
@@ -247,6 +256,7 @@ export const register: Register = (on, options: PluginOptions) => {
     await $.command.register({ name: 'weather-season', description: 'Preview a season: spring, summer, autumn, winter, snow, or auto', argumentHint: SEASONS.join(' | ') + ' | auto' })
     await $.command.register({ name: 'weather-now', description: 'Say what the background is showing and why' })
     await $.command.register({ name: 'weather-holiday', description: 'Preview a holiday: halloween, christmas, newyear, july4, none, or auto', argumentHint: 'halloween | christmas | newyear | july4 | none | auto' })
+    await $.command.register({ name: 'weather-era', description: 'Preview an era: stone, village, industrial, modern, scifi, or auto', argumentHint: 'stone | village | industrial | modern | scifi | auto' })
     await $.command.register({ name: 'weather-demo', description: 'Show the session events: kites, a firework, a red strike, fog' })
     await $.command.register({ name: 'weather-tour', description: 'A slideshow of the seasons and skies, about 40 seconds' })
     await $.tool.register({
@@ -258,6 +268,7 @@ export const register: Register = (on, options: PluginOptions) => {
           sky: { type: 'string', enum: [...CONDS, 'auto'] },
           season: { type: 'string', enum: [...SEASONS, 'auto'] },
           holiday: { type: 'string', enum: [...HOLIDAYS, 'none', 'auto'] },
+          era: { type: 'string', enum: [...ERA_ORDER, 'auto'] },
           hour: { type: 'number', description: 'Show this hour of the day (0-24); omit to follow the clock' },
         },
       },
@@ -271,6 +282,13 @@ export const register: Register = (on, options: PluginOptions) => {
     })
     void refreshWeather($)
     $.clock.every(WEATHER_MS, () => void refreshWeather($))
+    // a session that resumes partway through starts in the era its context has reached
+    void $.session.usage().then(async u => {
+      if (u.context.percent === undefined) return
+      const level = levelFor(u.context.percent)
+      const prev = await read($, eraState)
+      if (level !== prev.level) await update($, eraState, () => ({ level, since: 0 }))
+    }).catch(() => undefined)
     await $.command.register({ name: 'weather-test', description: 'Fire a burst of test lightning' })
     await $.command.register({ name: 'weather-off', description: 'Clear the thinking-weather background' })
     await $.command.register({ name: 'weather-cycle', description: 'Play a whole day in under a minute', argumentHint: '[seconds]' })
@@ -358,12 +376,43 @@ export const register: Register = (on, options: PluginOptions) => {
     return next(e)
   })
 
-  // compacting the conversation rolls fog through the valley, lifting once it is done
+  // compacting the conversation rolls fog through the valley; behind it society falls back to the
+  // Stone Age, and the fog lifts on the basics
   on('session.compact', async ($, e, next) => {
     await event($, (ev, now) => ({ ...ev, fogUntil: now + COMPACT_FOG_MS }))
     const done = await next(e)
-    await event($, (ev, now) => ({ ...ev, fogUntil: now + 2000 }), 2000 + 4200)
+    const now = await $.clock.now()
+    await update($, eraState, () => ({ level: 0, since: now }))
+    await event($, (ev, t) => ({ ...ev, fogUntil: t + 2000 }), 2000 + 4200)
     return done
+  })
+
+  // after each turn the engine measures the session: society reaches the era its context has
+  on('session.measure', async ($, e, next) => {
+    const percent = e.context.percent
+    if (percent !== undefined) {
+      const level = levelFor(percent)
+      const now = await $.clock.now()
+      const prev = await read($, eraState)
+      if (level !== prev.level) {
+        await update($, eraState, () => ({ level, since: now }))
+        await write($)
+      }
+    }
+    return next(e)
+  })
+
+  on('command.run', { command: 'weather-era' }, async ($, e, next) => {
+    const arg = e.args.trim()
+    if (arg === '') {
+      const st = await read($, eraState)
+      return { text: `Society is in the ${ERA_ORDER[st.level]} era${eraOverride ? ` (previewing ${eraOverride})` : ''}. It moves up a step for each fifth of the context, and back to the Stone Age at compaction.` }
+    }
+    if (arg === 'auto') eraOverride = undefined
+    else if ((ERA_ORDER as readonly string[]).includes(arg)) eraOverride = arg as Era
+    else return { text: `Eras: ${ERA_ORDER.join(', ')}, or auto.` }
+    await write($)
+    return { text: eraOverride === undefined ? 'The era follows the context again.' : `Showing the ${eraOverride} era. /weather-era auto follows the context.` }
   })
 
   on('command.run', { command: 'weather-holiday' }, async ($, e, next) => {
@@ -412,7 +461,8 @@ export const register: Register = (on, options: PluginOptions) => {
   on('command.run', { command: 'weather-season' }, async ($, e, next) => ({ text: await preview($, undefined, e.args.trim()) }))
 
   on('tool.call', { tool: 'mcp__thinking-weather__weather_preview' }, async ($, e, next) => {
-    const args = e as { sky?: unknown; season?: unknown; holiday?: unknown; hour?: unknown }
+    const args = e as { sky?: unknown; season?: unknown; holiday?: unknown; hour?: unknown; era?: unknown }
+    if (args.era !== undefined) eraOverride = args.era === 'auto' ? undefined : (String(args.era) as Era)
     if (args.holiday !== undefined) holidayOverride = args.holiday === 'auto' ? undefined : (String(args.holiday) as Holiday | 'none')
     if (typeof args.hour === 'number' && args.hour >= 0 && args.hour < 24) hourOverride = args.hour
     return { result: await preview($, args.sky === undefined ? undefined : String(args.sky), args.season === undefined ? undefined : String(args.season)) }
@@ -476,7 +526,7 @@ export const register: Register = (on, options: PluginOptions) => {
     const { Svg } = $.ui.resolve(e)
     const r = await read($, report)
     // the report's age and the season are judged on the engine's clock, as the state was written
-    const outside = outsideAt(stored.at > 0 ? stored.at : Date.now(), r)
+    const outside = outsideAt(stored.at > 0 ? stored.at : Date.now(), r, await read($, eraState))
     // on the real clock, dawn and dusk land at the place's real sunrise and sunset
     // (not `h`: that name is the JSX factory)
     const clockHour = hourAt(Date.now())

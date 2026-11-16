@@ -1,7 +1,7 @@
 import { expect, mock, test } from 'claude-code/testing'
 import type { On } from 'claude-code'
 
-import { condOf, holidayOf, moonPhase, seasonOf, solarHour } from '../hooks/outside'
+import { condOf, eraLevel, holidayOf, moonPhase, seasonOf, solarHour } from '../hooks/outside'
 import { scene } from '../hooks/scene'
 import type { Sky } from '../types'
 
@@ -153,8 +153,10 @@ test('holiday decorations stay under the size limit on a stormy night', async ()
   for (const holiday of ['halloween', 'christmas', 'newyear', 'july4'] as const) {
     const s: Sky = { mode: 'working', modeSince: AT - 400_000, stormSince: AT - 400_000, strikes, at: AT }
     const ev = { fogUntil: AT + 1000, kites: [1, 2, 3, 4, 5, 6].map(i => ({ id: `k${i}`, since: AT - i * 1000 })), fireworks: [{ t: AT - 500, seed: 2 }] }
-    const svg = scene(s, AT, 22, { cond: 'snow', season: 'winter', snowCover: true, moon: 0.5, holiday }, ev)
-    expect(svg.length < LIMIT).toBe(true)
+    for (const era of ['stone', 'village', 'scifi'] as const) {
+      const svg = scene(s, AT, 22, { cond: 'snow', season: 'winter', snowCover: true, moon: 0.5, holiday, era, eraSince: AT - 500 }, ev)
+      expect(svg.length < LIMIT).toBe(true)
+    }
   }
 })
 
@@ -167,4 +169,25 @@ test('running a slash command strikes lightning', async ($, on) => {
   await clock.advance(400)
   const svg = String((await view.find({ type: 'Svg' }))?.props.source ?? '')
   expect(svg.includes('class="bolt"')).toBe(true)
+})
+
+test('society advances with the context, an era for each fifth', async () => {
+  expect([0, 19, 20, 45, 61, 80, 100].map(eraLevel)).toEqual([0, 0, 1, 2, 3, 4, 4])
+})
+
+test('/weather-era shows another era on the backdrop', async ($, on) => {
+  engine(on)
+  const view = await $.ui.mount(BACKDROP)
+  const svg = async () => String((await view.find({ type: 'Svg' }))?.props.source ?? '')
+  expect((await svg()).includes('#e8dcff')).toBe(false)
+  await $.command.run({ command: 'weather-era', args: 'scifi' })
+  expect((await svg()).includes('#e8dcff')).toBe(true) // the future's ringed planet
+})
+
+test('each era draws its own settlement', async () => {
+  const s: Sky = { mode: 'idle', modeSince: 0, stormSince: 0, strikes: [], at: AT }
+  const draw = (era: 'stone' | 'village' | 'scifi') => scene(s, AT, 12, { cond: 'clear', season: 'summer', snowCover: false, era })
+  expect(draw('stone')).not.toBe(draw('village'))
+  expect(draw('scifi')).not.toBe(draw('village'))
+  expect(draw('scifi').includes('#e8dcff')).toBe(true) // the ringed planet
 })

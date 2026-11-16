@@ -22,6 +22,25 @@ moon cross the sky, stars come out, and after dark the town's windows, streetlam
 glow. By day birds cross the sky; at night fireflies blink in the meadow; chimneys smoke, the
 windmill turns and the pond glints all the time.
 
+## Society advances with the context
+
+The valley is a timeline. A fresh conversation is a Stone Age settlement: round thatched huts in a
+palisade, a campfire, standing stones and a mammoth grazing. As the conversation's context fills,
+society moves up an era for each fifth of the window, and near a full context the valley is a
+sci-fi city of spires and skybridges under a ringed planet, with a space elevator, hovercraft, an
+aurora at night, and an ion storm in place of Claude's rain clouds. Compacting the conversation
+rolls fog in, and behind it society falls back to the Stone Age: the fog lifts on the basics.
+
+| Context | Era |
+|---|---|
+| 0-20% | Stone Age |
+| 20-40% | Village |
+| 40-60% | Industrial (drawn as the village for now) |
+| 60-80% | Modern (drawn as the village for now) |
+| 80-100% | Sci-fi |
+
+`/weather-era <era>` previews one; `/weather-era` says where society stands.
+
 ## The session in the weather
 
 - **A slash command you run** strikes lightning too, even between turns.
@@ -63,6 +82,7 @@ turns it off.
 | `/weather-tour` | A 40-second slideshow of the seasons and skies |
 | `/weather-holiday <name>` | Preview `halloween`, `christmas`, `newyear` or `july4`; `none` or `auto` |
 | `/weather-demo` | Show the session events: kites, a firework, a red strike, fog |
+| `/weather-era <era>` | Preview `stone`, `village`, `industrial`, `modern` or `scifi`; `auto` follows the context |
 | `/weather-cycle [seconds]` | Play a whole day in under a minute (default 48 s) |
 | `/weather-time HH:MM` | Show the sky at a time of day; `/weather-time auto` follows the clock again |
 | `/weather-test` | Fire a burst of test lightning |

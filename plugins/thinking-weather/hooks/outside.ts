@@ -107,3 +107,8 @@ export function holidayOf(d: Date): Holiday | undefined {
   if (m === 7 && day === 4) return 'july4'
   return undefined
 }
+
+/** The era a context this full has reached: one step for each fifth of the window (0 to 4). */
+export function eraLevel(percent: number): number {
+  return Math.min(4, Math.max(0, Math.floor(percent / 20)))
+}
