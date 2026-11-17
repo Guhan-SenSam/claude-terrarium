@@ -41,6 +41,22 @@ rolls fog in, and behind it society falls back to the Stone Age: the fog lifts o
 
 `/terrarium-weather era <era>` previews one; `/terrarium-weather era` says where society stands.
 
+## Messages framed for the era
+
+On the desktop and mobile apps the chat isn't frosted over: the valley shows straight through, and
+each message sits in its own see-through box framed for the era, so the words stay readable. Your
+messages get a slightly stronger fill than Claude's replies.
+
+| Era | Frame |
+|---|---|
+| Stone Age | A thick flint-brown border over dark earth |
+| Village | A thin parchment-gold border over warm timber |
+| Industrial | A double brass border over soot |
+| Modern | A rounded steel-blue border over cool glass |
+| Sci-fi | A rounded neon-cyan border over deep violet |
+
+The frames change with the era and with `/terrarium-weather era` previews. The terminal keeps its own rows.
+
 ## The session in the weather
 
 - **A slash command you run** strikes lightning too, even between turns.

@@ -47,7 +47,8 @@ idle sky follows its real weather: clear, a few clouds, overcast, rain, snow, fo
 
 It also marks git commits with fireworks, compaction with fog, and Halloween, December, New Year's
 Eve and the Fourth of July with decorations. On the desktop the working row becomes a little pixel
-storm cloud. Everything is vector pixel art drawn live, so it stays sharp at any window size.
+storm cloud, and the chat sits unblurred over the valley, each message in a see-through box
+framed for the era: flint, timber, brass, glass or neon. Everything is vector pixel art drawn live, so it stays sharp at any window size.
 [Full guide](plugins/thinking-weather/README.md).
 
 ## system-monitor
