@@ -4,6 +4,7 @@ import type { EngineInterface, PluginOptions, Register, ThemeSetArgs } from 'cla
 import type { Cond, Era, EraState, Holiday, Mode, Outside, Report, Season, SessionEvents, Sky, Strike } from '../types'
 import { FIREWORK_MS, NO_EVENTS, scene } from './scene'
 import { ICON_PX, spinnerSvg } from './spinner'
+import { FRAMES } from './frames'
 import { eraLevel, fetchReport, holidayOf, moonPhase, seasonOf, solarHour } from './outside'
 
 const INITIAL: Sky = { mode: 'idle', modeSince: 0, stormSince: 0, strikes: [], at: 0 }
@@ -21,6 +22,8 @@ const COMPACT_FOG_MS = 60_000
 const ERA_ORDER: readonly Era[] = ['stone', 'village', 'industrial', 'modern', 'scifi']
 const eraState = atom({ plugin: 'thinking-weather', key: 'era' } as const, { level: 0, since: 0 } as EraState)
 let eraOverride: Era | undefined
+// the previewed era, as state, so the message boxes redraw when it changes
+const eraPreview = atom({ plugin: 'thinking-weather', key: 'eraPreview' } as const, null as Era | null)
 const levelFor = eraLevel
 
 // /terrarium-weather's subcommands, each answering with the text the command shows
@@ -57,7 +60,9 @@ async function fogLift($: EngineInterface) {
 const GIT_SHIP = /\bgit\b[^|;&]*\b(commit|push)\b/
 
 const LOOK: ThemeSetArgs = {
-  backdrop: { scene: 'weather', glass: { blur: 6, opacity: 0.5 } },
+  // no frosting over the chat column: the valley shows through, and each message carries its
+  // own see-through box (the era frames) to keep the words readable
+  backdrop: { scene: 'weather', glass: { blur: 0, opacity: 0 } },
 }
 
 const BATCH_MS = 200
@@ -146,6 +151,7 @@ async function write($: EngineInterface, mode?: Mode) {
     fresh.push({ ...st, t: slot })
   }
   pending = []
+  if ((await read($, eraPreview)) !== (eraOverride ?? null)) await update($, eraPreview, () => eraOverride ?? null)
   await update($, sky, prev => {
     const s = prev ?? INITIAL
     const next: Sky = { ...s, at: now }
@@ -533,6 +539,23 @@ export const register: Register = (on, options: PluginOptions) => {
     )
   })
 
+  // Messages sit in boxes framed for the era: flint, timber, brass, glass or neon
+  on('ui.render', { component: 'UserMessage' }, async ($, e, next) => {
+    if (e.surface !== 'desktop' && e.surface !== 'mobile') return next(e)
+    const row = await next(e)
+    const f = FRAMES[await shownEra($)]
+    const { Box } = $.ui.resolve(e)
+    return <Box borderStyle={f.style} borderColor={f.border} backgroundColor={f.mine} paddingX={1}>{row}</Box>
+  })
+
+  on('ui.render', { component: 'AssistantMessage' }, async ($, e, next) => {
+    if (e.surface !== 'desktop' && e.surface !== 'mobile') return next(e)
+    const row = await next(e)
+    const f = FRAMES[await shownEra($)]
+    const { Box } = $.ui.resolve(e)
+    return <Box borderStyle={f.style} borderColor={f.border} borderDimColor backgroundColor={f.fill} paddingX={1}>{row}</Box>
+  })
+
   on('ui.render', { component: 'Backdrop' }, async ($, e, next) => {
     if (e.props.plugin !== 'thinking-weather') return next(e)
     if (e.surface !== 'desktop' && e.surface !== 'mobile') return next(e)
@@ -551,6 +574,11 @@ export const register: Register = (on, options: PluginOptions) => {
     const ev = await read($, events)
     return <Svg source={scene(s, Date.now(), shownHour, outside, ev)} alt="A pixel-art sky over fields that turns stormy while Claude works" isInteractive />
   })
+}
+
+/** The era the valley shows now, read as state so a drawing that asks redraws when it changes. */
+async function shownEra($: EngineInterface): Promise<Era> {
+  return (await read($, eraPreview)) ?? ERA_ORDER[(await read($, eraState)).level] ?? 'stone'
 }
 
 // ---- /terrarium-weather <what> [value]: one function per subcommand ----

@@ -271,3 +271,19 @@ test('one command named for the mod holds every setting', async ($, on) => {
   expect(await run('reset')).toContain('Previews cleared')
   expect((await svg()).includes('#e8dcff')).toBe(false)
 })
+
+test('messages sit in a box framed for the era, and follow an era preview; the terminal keeps its own rows', async ($, on) => {
+  engine(on, Date.now())
+  on('ui.render', { component: 'AssistantMessage' }, ($, e) => h('Text', null, e.props.text))
+  const props = { text: 'hello', isFirstOfReply: true } as const
+  const reply = await $.ui.mount({ plugin: 'thinking-weather', component: 'AssistantMessage', props, surface: 'desktop' })
+  expect((await reply.find({ type: 'Box' }))?.props.borderColor).toBe('#8a6a48') // stone
+  await $.command.run({ command: 'terrarium-weather', args: 'era scifi' })
+  expect((await reply.find({ type: 'Box' }))?.props.borderColor).toBe('#3ef0ff')
+  expect((await reply.find({ type: 'Text', text: 'hello' }))?.text).toBe('hello')
+  await reply.unmount()
+
+  const terminal = await $.ui.mount({ plugin: 'thinking-weather', component: 'AssistantMessage', props, surface: 'terminal' })
+  expect(await terminal.find({ type: 'Box' })).toBeUndefined()
+  await terminal.unmount()
+})
